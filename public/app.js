@@ -1104,9 +1104,41 @@ function editStaff(staffId) {
     showAlert('编辑功能开发中...', 'info');
 }
 
-function deleteStaff(staffId) {
-    if (confirm('确定要删除这个人员吗？')) {
-        showAlert('删除功能开发中...', 'info');
+async function deleteStaff(staffId) {
+    // 先获取员工信息以显示名字
+    try {
+        const response = await fetch('/api/staff', {
+            headers: AuthManager.getAuthHeaders()
+        });
+        const staff = await response.json();
+        const person = staff.find(s => s.id === staffId);
+        
+        if (!person) {
+            showAlert('未找到该员工', 'danger');
+            return;
+        }
+        
+        if (!confirm(`确定要删除员工"${person.name}"吗？此操作不可恢复。`)) {
+            return;
+        }
+        
+        // 执行删除
+        const deleteResponse = await fetch(`/api/staff/${staffId}`, {
+            method: 'DELETE',
+            headers: AuthManager.getAuthHeaders()
+        });
+        
+        if (deleteResponse.ok) {
+            showAlert('员工删除成功', 'success');
+            // 刷新员工列表
+            await loadStaff();
+        } else {
+            const error = await deleteResponse.json();
+            showAlert(error.error || '删除员工失败', 'danger');
+        }
+    } catch (error) {
+        console.error('删除员工失败:', error);
+        showAlert('删除员工失败', 'danger');
     }
 }
 
