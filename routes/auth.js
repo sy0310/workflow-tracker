@@ -2,7 +2,9 @@ const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const db = require('../database');
+// 根据环境变量选择数据库
+const usePostgres = process.env.DATABASE_URL;
+const db = usePostgres ? require('../database-postgres') : require('../database');
 
 // 注册
 router.post('/register', async (req, res) => {

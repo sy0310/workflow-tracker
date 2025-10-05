@@ -7,6 +7,10 @@ const socketIo = require('socket.io');
 const cron = require('node-cron');
 const config = require('./config/production');
 
+// 根据环境变量选择数据库
+const usePostgres = process.env.DATABASE_URL;
+const db = usePostgres ? require('./database-postgres') : require('./database');
+
 const app = express();
 const server = http.createServer(app);
 const io = socketIo(server, {

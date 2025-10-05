@@ -1,4 +1,6 @@
-const db = require('../database');
+// 根据环境变量选择数据库
+const usePostgres = process.env.DATABASE_URL;
+const db = usePostgres ? require('../database-postgres') : require('../database');
 const axios = require('axios');
 
 // 微信通知配置（需要根据实际情况配置）
