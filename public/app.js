@@ -1,5 +1,6 @@
 // 全局变量
-let currentUserId = 1; // 临时用户ID，实际应用中应该从登录状态获取
+let currentUserId = null;
+let currentUser = null;
 let currentConversationId = null;
 
 // 页面加载完成后初始化
@@ -10,6 +11,16 @@ document.addEventListener('DOMContentLoaded', function() {
 // 初始化应用
 async function initializeApp() {
     try {
+        // 检查认证状态
+        const auth = AuthManager.checkAuth();
+        if (!auth) return;
+
+        currentUserId = auth.user.id;
+        currentUser = auth.user;
+
+        // 显示用户信息
+        updateUserInfo();
+
         // 加载任务统计
         await loadTaskStats();
         
@@ -55,6 +66,32 @@ function setupEventListeners() {
     });
 }
 
+// 显示用户信息
+function updateUserInfo() {
+    if (currentUser) {
+        // 可以在导航栏显示用户信息
+        const userInfo = document.createElement('div');
+        userInfo.className = 'navbar-text me-3';
+        userInfo.innerHTML = `
+            <i class="fas fa-user me-1"></i>
+            ${currentUser.username}
+            <button class="btn btn-sm btn-outline-light ms-2" onclick="logout()">
+                <i class="fas fa-sign-out-alt me-1"></i>登出
+            </button>
+        `;
+        
+        const navbar = document.querySelector('.navbar .container');
+        navbar.appendChild(userInfo);
+    }
+}
+
+// 登出功能
+function logout() {
+    if (confirm('确定要登出吗？')) {
+        AuthManager.logout();
+    }
+}
+
 // 显示不同部分
 function showSection(sectionName) {
     // 隐藏所有部分
@@ -75,7 +112,9 @@ function showSection(sectionName) {
 // 加载任务统计
 async function loadTaskStats() {
     try {
-        const response = await fetch('/api/tasks/stats/overview');
+        const response = await fetch('/api/tasks/stats/overview', {
+            headers: AuthManager.getAuthHeaders()
+        });
         const stats = await response.json();
         
         document.getElementById('total-tasks').textContent = stats.total_tasks || 0;
@@ -103,7 +142,9 @@ async function loadTasks() {
             url += '?' + params.toString();
         }
         
-        const response = await fetch(url);
+        const response = await fetch(url, {
+            headers: AuthManager.getAuthHeaders()
+        });
         const tasks = await response.json();
         
         displayTasks(tasks);
@@ -183,7 +224,9 @@ function displayTasks(tasks) {
 // 加载人员列表
 async function loadStaff() {
     try {
-        const response = await fetch('/api/staff');
+        const response = await fetch('/api/staff', {
+            headers: AuthManager.getAuthHeaders()
+        });
         const staff = await response.json();
         
         displayStaff(staff);
@@ -358,9 +401,7 @@ async function createTask() {
         
         const response = await fetch('/api/tasks', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
+            headers: AuthManager.getAuthHeaders(),
             body: JSON.stringify(formData)
         });
         
@@ -399,6 +440,9 @@ async function createStaff() {
         
         const response = await fetch('/api/staff', {
             method: 'POST',
+            headers: {
+                'Authorization': AuthManager.getAuthHeaders().Authorization
+            },
             body: formData
         });
         
@@ -428,7 +472,9 @@ async function searchStaff() {
     }
     
     try {
-        const response = await fetch(`/api/staff/search/${encodeURIComponent(keyword)}`);
+        const response = await fetch(`/api/staff/search/${encodeURIComponent(keyword)}`, {
+            headers: AuthManager.getAuthHeaders()
+        });
         const staff = await response.json();
         displayStaff(staff);
     } catch (error) {

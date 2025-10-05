@@ -59,7 +59,12 @@ npm install
 node -e "require('./database').initDatabase().then(() => console.log('数据库初始化完成'))"
 ```
 
-### 3. 启动服务器
+### 3. 创建管理员账户
+```bash
+node scripts/create-admin.js
+```
+
+### 4. 启动服务器
 ```bash
 # 开发模式
 npm run dev
@@ -68,8 +73,15 @@ npm run dev
 npm start
 ```
 
-### 4. 访问应用
+### 5. 访问应用
 打开浏览器访问：http://localhost:3000
+
+**默认管理员账户：**
+- 用户名：admin
+- 密码：admin123
+- 邮箱：admin@workflow.com
+
+⚠️ **重要：** 请在生产环境中修改默认密码！
 
 ## 配置说明
 
@@ -122,6 +134,15 @@ SECRETARY_WEBHOOK_URL=https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=secre
 - `GET /api/ai/conversations/:id` - 获取对话历史
 - `GET /api/ai/conversations/user/:user_id` - 获取用户对话列表
 
+### 用户认证
+- `POST /api/auth/register` - 用户注册
+- `POST /api/auth/login` - 用户登录
+- `GET /api/auth/me` - 获取当前用户信息
+- `PUT /api/auth/profile` - 更新用户信息
+- `PUT /api/auth/password` - 修改密码
+- `GET /api/auth/users` - 获取用户列表（管理员）
+- `DELETE /api/auth/users/:id` - 删除用户（管理员）
+
 ## 使用说明
 
 ### 1. 添加人员
@@ -131,7 +152,13 @@ SECRETARY_WEBHOOK_URL=https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=secre
 4. 上传头像（可选）
 5. 保存
 
-### 2. 创建任务
+### 2. 用户注册和登录
+1. 首次访问系统需要注册账户
+2. 使用用户名和密码登录
+3. 管理员可以管理所有用户和任务
+4. 普通用户只能看到自己的任务
+
+### 3. 创建任务
 **方式一：传统表单**
 1. 点击"任务管理"标签
 2. 点击"创建任务"按钮
@@ -148,7 +175,7 @@ SECRETARY_WEBHOOK_URL=https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=secre
 3. AI会自动提取信息并建议创建任务
 4. 确认后自动创建任务
 
-### 3. 设置提醒
+### 4. 设置提醒
 - 系统会自动检查任务截止日期
 - 支持手动创建提醒
 - 可配置提醒到秘书处或直接提醒负责人
@@ -184,13 +211,14 @@ SECRETARY_WEBHOOK_URL=https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=secre
 ## 扩展功能
 
 ### 计划中的功能
-- [ ] 用户认证和权限管理
+- [x] 用户认证和权限管理
 - [ ] 任务模板功能
 - [ ] 更丰富的报表和统计
 - [ ] 移动端适配
 - [ ] 邮件提醒功能
 - [ ] 任务依赖关系
 - [ ] 文件附件管理
+- [ ] 数据导入导出功能
 
 ### 自定义扩展
 - 修改 `routes/` 目录下的文件添加新的API接口

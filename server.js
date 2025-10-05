@@ -5,6 +5,7 @@ const path = require('path');
 const http = require('http');
 const socketIo = require('socket.io');
 const cron = require('node-cron');
+const config = require('./config/production');
 
 const app = express();
 const server = http.createServer(app);
@@ -16,18 +17,29 @@ const io = socketIo(server, {
 });
 
 // 中间件
-app.use(cors());
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true }));
+app.use(cors({
+  origin: config.security.corsOrigins,
+  credentials: true
+}));
+app.use(bodyParser.json({ limit: '10mb' }));
+app.use(bodyParser.urlencoded({ extended: true, limit: '10mb' }));
 app.use(express.static('public'));
 
+// 请求日志中间件
+app.use((req, res, next) => {
+  console.log(`${new Date().toISOString()} - ${req.method} ${req.path} - ${req.ip}`);
+  next();
+});
+
 // 导入路由
+const authRoutes = require('./routes/auth');
 const staffRoutes = require('./routes/staff');
 const taskRoutes = require('./routes/tasks');
 const notificationRoutes = require('./routes/notifications');
 const aiRoutes = require('./routes/ai');
 
 // 使用路由
+app.use('/api/auth', authRoutes);
 app.use('/api/staff', staffRoutes);
 app.use('/api/tasks', taskRoutes);
 app.use('/api/notifications', notificationRoutes);
@@ -48,13 +60,13 @@ io.on('connection', (socket) => {
 });
 
 // 定时任务 - 检查任务提醒
-cron.schedule('0 9 * * *', () => {
+cron.schedule(config.cron.checkDeadlines, () => {
   console.log('执行每日任务提醒检查');
   require('./services/notificationService').checkTaskDeadlines();
 });
 
 // 定时任务 - 每小时检查即将到期的任务
-cron.schedule('0 * * * *', () => {
+cron.schedule(config.cron.checkUpcoming, () => {
   console.log('检查即将到期的任务');
   require('./services/notificationService').checkUpcomingTasks();
 });
@@ -64,15 +76,23 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
+// 登录页面路由
+app.get('/login', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'login.html'));
+});
+
 // 错误处理中间件
 app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(500).json({ error: '服务器内部错误' });
 });
 
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-  console.log(`服务器运行在端口 ${PORT}`);
+const PORT = config.server.port;
+const HOST = config.server.host;
+
+server.listen(PORT, HOST, () => {
+  console.log(`服务器运行在 ${HOST}:${PORT}`);
+  console.log(`环境: ${process.env.NODE_ENV || 'development'}`);
 });
 
 module.exports = { app, io };
