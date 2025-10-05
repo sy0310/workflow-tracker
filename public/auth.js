@@ -7,12 +7,6 @@ class AuthManager {
     }
 
     init() {
-        // 如果已经登录，重定向到主页面
-        if (this.token && this.user) {
-            this.redirectToMain();
-            return;
-        }
-
         // 绑定事件
         this.bindEvents();
     }

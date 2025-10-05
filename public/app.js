@@ -13,7 +13,10 @@ async function initializeApp() {
     try {
         // 检查认证状态
         const auth = AuthManager.checkAuth();
-        if (!auth) return;
+        if (!auth) {
+            console.log('未登录，重定向到登录页面');
+            return;
+        }
 
         currentUserId = auth.user.id;
         currentUser = auth.user;
