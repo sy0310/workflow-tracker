@@ -223,7 +223,10 @@ function displayDepartmentProjects(projects, departmentName) {
 }
 
 // 显示创建项目模态框
-function showCreateProjectModal(presetDepartment = null) {
+async function showCreateProjectModal(presetDepartment = null) {
+    // 加载员工列表到负责人下拉框
+    await loadStaffToSelect('project-assignee');
+    
     const modal = new bootstrap.Modal(document.getElementById('createProjectModal'));
     
     // 如果预设了部门，自动选择
@@ -233,6 +236,36 @@ function showCreateProjectModal(presetDepartment = null) {
     }
     
     modal.show();
+}
+
+// 加载员工列表到下拉框
+async function loadStaffToSelect(selectId) {
+    try {
+        const response = await fetch('/api/staff', {
+            headers: AuthManager.getAuthHeaders()
+        });
+        
+        if (!response.ok) {
+            console.error('获取员工列表失败');
+            return;
+        }
+        
+        const staff = await response.json();
+        const select = document.getElementById(selectId);
+        
+        // 清空现有选项（保留第一个"请选择"选项）
+        select.innerHTML = '<option value="">选择负责人</option>';
+        
+        // 添加员工选项
+        staff.forEach(person => {
+            const option = document.createElement('option');
+            option.value = person.name;
+            option.textContent = `${person.name}${person.department ? ' - ' + person.department : ''}${person.position ? ' (' + person.position + ')' : ''}`;
+            select.appendChild(option);
+        });
+    } catch (error) {
+        console.error('加载员工列表失败:', error);
+    }
 }
 
 // 更新部门特有字段（使用配置文件）
@@ -330,6 +363,9 @@ async function deleteProject(departmentName, projectId, projectName) {
 // 编辑项目
 async function editProject(departmentName, projectId) {
     try {
+        // 加载员工列表到负责人下拉框
+        await loadStaffToSelect('edit-project-assignee');
+        
         // 获取项目信息
         const response = await fetch(`/api/departments/${encodeURIComponent(departmentName)}/projects`, {
             headers: AuthManager.getAuthHeaders()
@@ -353,9 +389,13 @@ async function editProject(departmentName, projectId) {
         document.getElementById('edit-project-department').value = departmentName;
         document.getElementById('edit-project-name').value = project.项目名称 || '';
         document.getElementById('edit-project-description').value = project.项目描述 || '';
-        document.getElementById('edit-project-assignee').value = project.负责人 || '';
         document.getElementById('edit-project-priority').value = project.优先级 || 2;
         document.getElementById('edit-project-status').value = project.状态 || 1;
+        
+        // 设置负责人（在员工列表加载后）
+        setTimeout(() => {
+            document.getElementById('edit-project-assignee').value = project.负责人 || '';
+        }, 100);
         
         // 处理时间字段
         if (project.开始时间) {
