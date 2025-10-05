@@ -2,6 +2,7 @@
 let currentUserId = null;
 let currentUser = null;
 let currentConversationId = null;
+let currentDepartment = null;
 
 // 页面加载完成后初始化
 document.addEventListener('DOMContentLoaded', function() {
@@ -41,6 +42,9 @@ async function initializeApp() {
         
         // 设置事件监听器
         setupEventListeners();
+        
+        // 设置部门选择事件
+        setupDepartmentEvents();
         
         console.log('应用初始化完成');
     } catch (error) {
@@ -95,6 +99,14 @@ function logout() {
     }
 }
 
+// 设置部门选择事件
+function setupDepartmentEvents() {
+    // 部门选择器变化事件
+    document.getElementById('project-department').addEventListener('change', function() {
+        updateDepartmentSpecificFields(this.value);
+    });
+}
+
 // 显示不同部分
 function showSection(sectionName) {
     // 隐藏所有部分
@@ -110,6 +122,355 @@ function showSection(sectionName) {
         link.classList.remove('active');
     });
     event.target.classList.add('active');
+}
+
+// 选择部门
+function selectDepartment(departmentName) {
+    // 更新当前部门
+    currentDepartment = departmentName;
+    
+    // 更新部门卡片选中状态
+    document.querySelectorAll('.department-card').forEach(card => {
+        card.classList.remove('selected');
+    });
+    event.target.closest('.department-card').classList.add('selected');
+    
+    // 加载该部门的项目
+    loadDepartmentProjects(departmentName);
+}
+
+// 加载部门项目
+async function loadDepartmentProjects(departmentName) {
+    try {
+        const response = await fetch(`/api/departments/${encodeURIComponent(departmentName)}/projects`, {
+            headers: AuthManager.getAuthHeaders()
+        });
+        
+        if (!response.ok) {
+            throw new Error('加载项目失败');
+        }
+        
+        const projects = await response.json();
+        displayDepartmentProjects(projects, departmentName);
+    } catch (error) {
+        console.error('加载部门项目失败:', error);
+        showAlert('加载项目失败', 'danger');
+    }
+}
+
+// 显示部门项目
+function displayDepartmentProjects(projects, departmentName) {
+    const container = document.getElementById('department-projects');
+    
+    let html = `
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h3><i class="fas fa-building me-2"></i>${departmentName} 项目</h3>
+            <button class="btn btn-primary" onclick="showCreateProjectModal('${departmentName}')">
+                <i class="fas fa-plus me-1"></i>创建项目
+            </button>
+        </div>
+    `;
+    
+    if (projects.length === 0) {
+        html += `
+            <div class="text-center text-muted py-5">
+                <i class="fas fa-folder-open fa-3x mb-3"></i>
+                <h5>暂无项目</h5>
+                <p>点击"创建项目"按钮开始创建第一个项目</p>
+            </div>
+        `;
+    } else {
+        html += '<div class="row">';
+        projects.forEach(project => {
+            const priorityClass = getPriorityClass(project.优先级);
+            const statusText = getStatusText(project.状态);
+            
+            html += `
+                <div class="col-md-6 col-lg-4 mb-3">
+                    <div class="card project-card ${priorityClass}">
+                        <div class="card-body">
+                            <h6 class="card-title">${project.项目名称}</h6>
+                            <p class="card-text text-muted small">${project.项目描述 || '无描述'}</p>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="badge bg-${getPriorityColor(project.优先级)}">${getPriorityText(project.优先级)}</span>
+                                <span class="badge bg-${getStatusColor(project.状态)}">${statusText}</span>
+                            </div>
+                            <div class="mt-2">
+                                <small class="text-muted">
+                                    <i class="fas fa-user me-1"></i>${project.负责人 || '未分配'}
+                                    <br><i class="fas fa-calendar me-1"></i>${formatDateTime(project.创建时间)}
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+        html += '</div>';
+    }
+    
+    container.innerHTML = html;
+}
+
+// 显示创建项目模态框
+function showCreateProjectModal(presetDepartment = null) {
+    const modal = new bootstrap.Modal(document.getElementById('createProjectModal'));
+    
+    // 如果预设了部门，自动选择
+    if (presetDepartment) {
+        document.getElementById('project-department').value = presetDepartment;
+        updateDepartmentSpecificFields(presetDepartment);
+    }
+    
+    modal.show();
+}
+
+// 更新部门特有字段
+function updateDepartmentSpecificFields(department) {
+    const container = document.getElementById('department-specific-fields');
+    
+    if (!department) {
+        container.innerHTML = '';
+        return;
+    }
+    
+    let html = '<hr><h6 class="mb-3">部门特有信息</h6>';
+    
+    switch (department) {
+        case '产业分析':
+            html += `
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="analysis-type" class="form-label">分析类型</label>
+                            <select class="form-select" id="analysis-type">
+                                <option value="">请选择</option>
+                                <option value="市场分析">市场分析</option>
+                                <option value="竞品分析">竞品分析</option>
+                                <option value="趋势分析">趋势分析</option>
+                                <option value="用户分析">用户分析</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="target-industry" class="form-label">目标行业</label>
+                            <input type="text" class="form-control" id="target-industry" placeholder="如：新能源汽车">
+                        </div>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label for="analysis-scope" class="form-label">分析范围</label>
+                    <textarea class="form-control" id="analysis-scope" rows="2" placeholder="描述分析的具体范围和内容"></textarea>
+                </div>
+                <div class="mb-3">
+                    <label for="data-sources" class="form-label">数据来源</label>
+                    <input type="text" class="form-control" id="data-sources" placeholder="如：公开数据、调研报告、内部数据等">
+                </div>
+            `;
+            break;
+            
+        case '创意实践':
+            html += `
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="creative-type" class="form-label">创意类型</label>
+                            <select class="form-select" id="creative-type">
+                                <option value="">请选择</option>
+                                <option value="产品创意">产品创意</option>
+                                <option value="营销创意">营销创意</option>
+                                <option value="服务创意">服务创意</option>
+                                <option value="流程创意">流程创意</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="target-users" class="form-label">目标用户</label>
+                            <input type="text" class="form-control" id="target-users" placeholder="如：企业客户、个人用户">
+                        </div>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label for="creative-concept" class="form-label">创意概念</label>
+                    <textarea class="form-control" id="creative-concept" rows="2" placeholder="描述创意的核心概念和想法"></textarea>
+                </div>
+                <div class="mb-3">
+                    <label for="implementation-plan" class="form-label">实施计划</label>
+                    <textarea class="form-control" id="implementation-plan" rows="2" placeholder="描述具体的实施步骤和计划"></textarea>
+                </div>
+            `;
+            break;
+            
+        case '活动策划':
+            html += `
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="activity-type" class="form-label">活动类型</label>
+                            <select class="form-select" id="activity-type">
+                                <option value="">请选择</option>
+                                <option value="线上活动">线上活动</option>
+                                <option value="线下活动">线下活动</option>
+                                <option value="混合活动">混合活动</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="target-audience" class="form-label">目标受众</label>
+                            <input type="text" class="form-control" id="target-audience" placeholder="如：媒体和客户">
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="activity-scale" class="form-label">活动规模</label>
+                            <select class="form-select" id="activity-scale">
+                                <option value="">请选择</option>
+                                <option value="小型">小型 (50人以下)</option>
+                                <option value="中型">中型 (50-200人)</option>
+                                <option value="大型">大型 (200人以上)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="budget-range" class="form-label">预算范围</label>
+                            <input type="text" class="form-control" id="budget-range" placeholder="如：10-50万">
+                        </div>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label for="activity-location" class="form-label">活动地点</label>
+                    <input type="text" class="form-control" id="activity-location" placeholder="如：上海国际会议中心">
+                </div>
+            `;
+            break;
+            
+        case '资源拓展':
+            html += `
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="resource-type" class="form-label">资源类型</label>
+                            <select class="form-select" id="resource-type">
+                                <option value="">请选择</option>
+                                <option value="人力资源">人力资源</option>
+                                <option value="技术资源">技术资源</option>
+                                <option value="资金资源">资金资源</option>
+                                <option value="渠道资源">渠道资源</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="target-object" class="form-label">目标对象</label>
+                            <input type="text" class="form-control" id="target-object" placeholder="如：AI技术公司">
+                        </div>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label for="expansion-method" class="form-label">拓展方式</label>
+                    <select class="form-select" id="expansion-method">
+                        <option value="">请选择</option>
+                        <option value="合作">合作</option>
+                        <option value="收购">收购</option>
+                        <option value="联盟">联盟</option>
+                        <option value="投资">投资</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label for="resource-value" class="form-label">资源价值</label>
+                    <textarea class="form-control" id="resource-value" rows="2" placeholder="描述资源的潜在价值和重要性"></textarea>
+                </div>
+            `;
+            break;
+    }
+    
+    container.innerHTML = html;
+}
+
+// 创建项目
+async function createProject() {
+    try {
+        const department = document.getElementById('project-department').value;
+        const projectName = document.getElementById('project-name').value;
+        const projectDescription = document.getElementById('project-description').value;
+        
+        if (!department || !projectName) {
+            showAlert('请填写必填字段', 'danger');
+            return;
+        }
+        
+        // 构建项目数据
+        const projectData = {
+            项目名称: projectName,
+            项目描述: projectDescription,
+            负责人: document.getElementById('project-assignee').value,
+            优先级: parseInt(document.getElementById('project-priority').value),
+            开始时间: document.getElementById('project-start-time').value,
+            预计完成时间: document.getElementById('project-end-time').value,
+            创建者: currentUserId
+        };
+        
+        // 添加部门特有字段
+        switch (department) {
+            case '产业分析':
+                projectData.分析类型 = document.getElementById('analysis-type').value;
+                projectData.目标行业 = document.getElementById('target-industry').value;
+                projectData.分析范围 = document.getElementById('analysis-scope').value;
+                projectData.数据来源 = document.getElementById('data-sources').value;
+                break;
+                
+            case '创意实践':
+                projectData.创意类型 = document.getElementById('creative-type').value;
+                projectData.目标用户 = document.getElementById('target-users').value;
+                projectData.创意概念 = document.getElementById('creative-concept').value;
+                projectData.实施计划 = document.getElementById('implementation-plan').value;
+                break;
+                
+            case '活动策划':
+                projectData.活动类型 = document.getElementById('activity-type').value;
+                projectData.目标受众 = document.getElementById('target-audience').value;
+                projectData.活动规模 = document.getElementById('activity-scale').value;
+                projectData.预算范围 = document.getElementById('budget-range').value;
+                projectData.活动地点 = document.getElementById('activity-location').value;
+                break;
+                
+            case '资源拓展':
+                projectData.资源类型 = document.getElementById('resource-type').value;
+                projectData.目标对象 = document.getElementById('target-object').value;
+                projectData.拓展方式 = document.getElementById('expansion-method').value;
+                projectData.资源价值 = document.getElementById('resource-value').value;
+                break;
+        }
+        
+        const response = await fetch(`/api/departments/${encodeURIComponent(department)}/projects`, {
+            method: 'POST',
+            headers: AuthManager.getAuthHeaders(),
+            body: JSON.stringify(projectData)
+        });
+        
+        if (response.ok) {
+            showAlert('项目创建成功', 'success');
+            bootstrap.Modal.getInstance(document.getElementById('createProjectModal')).hide();
+            document.getElementById('createProjectForm').reset();
+            
+            // 如果当前选择了该部门，刷新项目列表
+            if (currentDepartment === department) {
+                await loadDepartmentProjects(department);
+            }
+        } else {
+            const error = await response.json();
+            showAlert(error.error || '创建项目失败', 'danger');
+        }
+    } catch (error) {
+        console.error('创建项目失败:', error);
+        showAlert('创建项目失败', 'danger');
+    }
 }
 
 // 加载任务统计

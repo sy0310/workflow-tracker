@@ -21,8 +21,8 @@
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav me-auto">
                     <li class="nav-item">
-                        <a class="nav-link active" href="#" onclick="showSection('tasks')">
-                            <i class="fas fa-list me-1"></i>任务管理
+                        <a class="nav-link active" href="#" onclick="showSection('departments')">
+                            <i class="fas fa-building me-1"></i>部门管理
                         </a>
                     </li>
                     <li class="nav-item">
@@ -47,6 +47,69 @@
 
     <!-- 主要内容区域 -->
     <div class="container-fluid mt-4">
+        <!-- 部门管理 -->
+        <div id="departments-section" class="section">
+            <div class="row">
+                <div class="col-12">
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <h2><i class="fas fa-building me-2"></i>部门管理</h2>
+                        <button class="btn btn-primary" onclick="showCreateProjectModal()">
+                            <i class="fas fa-plus me-1"></i>创建项目
+                        </button>
+                    </div>
+                    
+                    <!-- 部门选择器 -->
+                    <div class="row mb-4">
+                        <div class="col-md-3">
+                            <div class="card department-card" onclick="selectDepartment('产业分析')">
+                                <div class="card-body text-center">
+                                    <i class="fas fa-chart-line fa-3x text-primary mb-3"></i>
+                                    <h5>产业分析</h5>
+                                    <p class="text-muted">市场调研与数据分析</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card department-card" onclick="selectDepartment('创意实践')">
+                                <div class="card-body text-center">
+                                    <i class="fas fa-lightbulb fa-3x text-warning mb-3"></i>
+                                    <h5>创意实践</h5>
+                                    <p class="text-muted">创新产品与服务设计</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card department-card" onclick="selectDepartment('活动策划')">
+                                <div class="card-body text-center">
+                                    <i class="fas fa-calendar-alt fa-3x text-success mb-3"></i>
+                                    <h5>活动策划</h5>
+                                    <p class="text-muted">活动组织与执行</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card department-card" onclick="selectDepartment('资源拓展')">
+                                <div class="card-body text-center">
+                                    <i class="fas fa-handshake fa-3x text-info mb-3"></i>
+                                    <h5>资源拓展</h5>
+                                    <p class="text-muted">合作伙伴与资源开发</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 当前部门项目列表 -->
+                    <div id="department-projects">
+                        <div class="text-center text-muted">
+                            <i class="fas fa-mouse-pointer fa-2x mb-3"></i>
+                            <h5>请选择一个部门查看项目</h5>
+                            <p>点击上方的部门卡片开始管理项目</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- 任务管理 -->
         <div id="tasks-section" class="section">
             <div class="row">
@@ -422,6 +485,88 @@
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
                     <button type="button" class="btn btn-primary" onclick="createStaff()">添加人员</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 创建项目模态框 -->
+    <div class="modal fade" id="createProjectModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">创建项目</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="createProjectForm">
+                        <!-- 部门选择 -->
+                        <div class="mb-3">
+                            <label for="project-department" class="form-label">选择部门 <span class="text-danger">*</span></label>
+                            <select class="form-select" id="project-department" required>
+                                <option value="">请选择部门</option>
+                                <option value="产业分析">产业分析</option>
+                                <option value="创意实践">创意实践</option>
+                                <option value="活动策划">活动策划</option>
+                                <option value="资源拓展">资源拓展</option>
+                            </select>
+                        </div>
+                        
+                        <!-- 基础信息 -->
+                        <div class="mb-3">
+                            <label for="project-name" class="form-label">项目名称 <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="project-name" required>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="project-description" class="form-label">项目描述</label>
+                            <textarea class="form-control" id="project-description" rows="3"></textarea>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="project-assignee" class="form-label">负责人</label>
+                                    <select class="form-select" id="project-assignee">
+                                        <option value="">选择负责人</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="project-priority" class="form-label">优先级</label>
+                                    <select class="form-select" id="project-priority">
+                                        <option value="1">低</option>
+                                        <option value="2" selected>中</option>
+                                        <option value="3">高</option>
+                                        <option value="4">紧急</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="project-start-time" class="form-label">开始时间</label>
+                                    <input type="datetime-local" class="form-control" id="project-start-time">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="project-end-time" class="form-label">预计完成时间</label>
+                                    <input type="datetime-local" class="form-control" id="project-end-time">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- 部门特有字段将通过 JavaScript 动态生成 -->
+                        <div id="department-specific-fields"></div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-primary" onclick="createProject()">创建项目</button>
                 </div>
             </div>
         </div>

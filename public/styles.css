@@ -3,6 +3,57 @@ body {
     background-color: #f8f9fa;
 }
 
+/* 部门卡片样式 */
+.department-card {
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border: 2px solid transparent;
+    height: 200px;
+    display: flex;
+    align-items: center;
+}
+
+.department-card:hover {
+    border-color: #007bff;
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+}
+
+.department-card.selected {
+    border-color: #007bff;
+    background-color: #f8f9fa;
+}
+
+.department-card i {
+    transition: transform 0.3s ease;
+}
+
+.department-card:hover i {
+    transform: scale(1.1);
+}
+
+/* 项目卡片样式 */
+.project-card {
+    margin-bottom: 20px;
+    border-left: 4px solid #007bff;
+}
+
+.project-card.priority-high {
+    border-left-color: #dc3545;
+}
+
+.project-card.priority-medium {
+    border-left-color: #ffc107;
+}
+
+.project-card.priority-low {
+    border-left-color: #28a745;
+}
+
+.project-card.priority-urgent {
+    border-left-color: #6f42c1;
+}
+
 .section {
     animation: fadeIn 0.3s ease-in;
 }

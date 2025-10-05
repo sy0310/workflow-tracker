@@ -46,6 +46,7 @@ const staffRoutes = require('./routes/staff');
 const taskRoutes = require('./routes/tasks');
 const notificationRoutes = require('./routes/notifications');
 const aiRoutes = require('./routes/ai');
+const departmentRoutes = require('./routes/departments');
 
 // 使用路由
 app.use('/api/auth', authRoutes);
@@ -53,6 +54,7 @@ app.use('/api/staff', staffRoutes);
 app.use('/api/tasks', taskRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/ai', aiRoutes);
+app.use('/api/departments', departmentRoutes);
 
 // Socket.io 连接处理（只在非 Vercel 环境）
 if (!process.env.VERCEL && io) {
