@@ -189,7 +189,17 @@ function displayDepartmentProjects(projects, departmentName) {
                 <div class="col-md-6 col-lg-4 mb-3">
                     <div class="card project-card ${priorityClass}">
                         <div class="card-body">
-                            <h6 class="card-title">${project.项目名称}</h6>
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <h6 class="card-title mb-0">${project.项目名称}</h6>
+                                <div class="btn-group btn-group-sm">
+                                    <button class="btn btn-outline-primary btn-sm" onclick="editProject('${departmentName}', ${project.id})" title="编辑">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button class="btn btn-outline-danger btn-sm" onclick="deleteProject('${departmentName}', ${project.id}, '${project.项目名称}')" title="删除">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
                             <p class="card-text text-muted small">${project.项目描述 || '无描述'}</p>
                             <div class="d-flex justify-content-between align-items-center">
                                 <span class="badge bg-${getPriorityColor(project.优先级)}">${getPriorityText(project.优先级)}</span>
@@ -471,6 +481,38 @@ async function createProject() {
         console.error('创建项目失败:', error);
         showAlert('创建项目失败', 'danger');
     }
+}
+
+// 删除项目
+async function deleteProject(departmentName, projectId, projectName) {
+    if (!confirm(`确定要删除项目"${projectName}"吗？此操作不可恢复。`)) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/departments/${encodeURIComponent(departmentName)}/projects/${projectId}`, {
+            method: 'DELETE',
+            headers: AuthManager.getAuthHeaders()
+        });
+        
+        if (response.ok) {
+            showAlert('项目删除成功', 'success');
+            // 刷新项目列表
+            await loadDepartmentProjects(departmentName);
+        } else {
+            const error = await response.json();
+            showAlert(error.error || '删除项目失败', 'danger');
+        }
+    } catch (error) {
+        console.error('删除项目失败:', error);
+        showAlert('删除项目失败', 'danger');
+    }
+}
+
+// 编辑项目（暂未实现）
+function editProject(departmentName, projectId) {
+    showAlert('编辑功能开发中...', 'info');
+    // TODO: 实现编辑功能
 }
 
 // 加载任务统计

@@ -24,6 +24,31 @@ body {
     background-color: #f8f9fa;
 }
 
+/* 项目卡片样式 */
+.project-card {
+    transition: all 0.3s ease;
+    border: 1px solid #e9ecef;
+}
+
+.project-card:hover {
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    transform: translateY(-2px);
+}
+
+.project-card .btn-group {
+    opacity: 0.7;
+    transition: opacity 0.3s ease;
+}
+
+.project-card:hover .btn-group {
+    opacity: 1;
+}
+
+.project-card .btn-sm {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+}
+
 .department-card i {
     transition: transform 0.3s ease;
 }
