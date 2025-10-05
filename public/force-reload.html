@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>强制重新加载</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 700px;
+            margin: 50px auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .card {
+            background: white;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        }
+        h1 {
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+        .step {
+            margin: 20px 0;
+            padding: 20px;
+            background: #f8f9fa;
+            border-left: 4px solid #667eea;
+            border-radius: 4px;
+        }
+        .step h3 {
+            margin: 0 0 10px 0;
+            color: #667eea;
+            font-size: 18px;
+        }
+        .step p {
+            margin: 5px 0;
+            line-height: 1.6;
+        }
+        .kbd {
+            background: #333;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 14px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            margin-top: 20px;
+            width: 100%;
+            transition: transform 0.2s;
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+        .success {
+            color: #28a745;
+            font-weight: bold;
+            margin-top: 20px;
+            padding: 15px;
+            background: #d4edda;
+            border-radius: 6px;
+            border: 1px solid #c3e6cb;
+        }
+        .warning {
+            color: #856404;
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+        }
+        .countdown {
+            font-size: 24px;
+            font-weight: bold;
+            color: #667eea;
+            text-align: center;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>🔄 Chrome 缓存清除指南</h1>
+        <p class="subtitle">请按照以下步骤清除浏览器缓存</p>
+        
+        <div class="warning">
+            ⚠️ <strong>重要：</strong>必须清除缓存才能看到最新版本的页面
+        </div>
+        
+        <div class="step">
+            <h3>方法 1: 快捷键清除（推荐）</h3>
+            <p>1. 按 <span class="kbd">Ctrl</span> + <span class="kbd">Shift</span> + <span class="kbd">Delete</span></p>
+            <p>2. 时间范围选择 <strong>"时间不限"</strong></p>
+            <p>3. 勾选 <strong>"缓存的图片和文件"</strong></p>
+            <p>4. 点击 <strong>"清除数据"</strong></p>
+        </div>
+        
+        <div class="step">
+            <h3>方法 2: 开发者工具清除（最快）</h3>
+            <p>1. 按 <span class="kbd">F12</span> 打开开发者工具</p>
+            <p>2. <strong>右键点击</strong>浏览器刷新按钮 🔄</p>
+            <p>3. 选择 <strong>"清空缓存并硬性重新加载"</strong></p>
+        </div>
+        
+        <div class="step">
+            <h3>方法 3: 使用隐私模式</h3>
+            <p>1. 按 <span class="kbd">Ctrl</span> + <span class="kbd">Shift</span> + <span class="kbd">N</span></p>
+            <p>2. 在隐私窗口中访问系统</p>
+        </div>
+        
+        <div id="countdown" class="countdown" style="display: none;"></div>
+        
+        <button onclick="clearAndRedirect()">✅ 我已清除缓存，立即跳转</button>
+        
+        <div id="message"></div>
+    </div>
+
+    <script>
+        let countdownTimer;
+        
+        function clearAndRedirect() {
+            // 清除本地存储
+            try {
+                localStorage.clear();
+                sessionStorage.clear();
+                console.log('本地存储已清除');
+            } catch (e) {
+                console.error('清除存储失败:', e);
+            }
+            
+            // 显示倒计时
+            const countdownDiv = document.getElementById('countdown');
+            const messageDiv = document.getElementById('message');
+            
+            messageDiv.innerHTML = '<p class="success">✅ 正在准备跳转...</p>';
+            countdownDiv.style.display = 'block';
+            
+            let count = 3;
+            countdownDiv.textContent = count;
+            
+            countdownTimer = setInterval(() => {
+                count--;
+                if (count > 0) {
+                    countdownDiv.textContent = count;
+                } else {
+                    clearInterval(countdownTimer);
+                    // 使用时间戳强制刷新，绕过所有缓存
+                    const timestamp = new Date().getTime();
+                    window.location.href = `/?nocache=${timestamp}`;
+                }
+            }, 1000);
+        }
+        
+        // 页面加载时的提示
+        window.onload = function() {
+            console.log('%c⚠️ 请清除浏览器缓存', 'color: red; font-size: 20px; font-weight: bold;');
+            console.log('%c按 Ctrl+Shift+Delete 清除缓存', 'color: blue; font-size: 16px;');
+            
+            // 检查是否是从缓存加载的
+            if (performance.navigation.type === 2) {
+                console.log('%c⚠️ 检测到从缓存加载，请手动清除缓存', 'color: red; font-size: 16px;');
+            }
+        };
+    </script>
+</body>
+</html>

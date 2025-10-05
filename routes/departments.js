@@ -1,11 +1,13 @@
 const express = require('express');
 const router = express.Router();
+require('dotenv').config();
 // 根据环境变量选择数据库
 const usePostgres = process.env.DATABASE_URL;
 const db = usePostgres ? require('../database-postgres') : require('../database');
+const authenticateToken = require('../middleware/authenticateToken');
 
 // 获取部门项目列表
-router.get('/:department/projects', async (req, res) => {
+router.get('/:department/projects', authenticateToken, async (req, res) => {
   try {
     const department = decodeURIComponent(req.params.department);
     const { status, priority } = req.query;
@@ -32,12 +34,14 @@ router.get('/:department/projects', async (req, res) => {
     res.json(projects);
   } catch (error) {
     console.error('获取部门项目列表错误:', error);
-    res.status(500).json({ error: '获取项目列表失败' });
+    console.error('错误详情:', error.message);
+    console.error('错误堆栈:', error.stack);
+    res.status(500).json({ error: '获取项目列表失败', details: error.message });
   }
 });
 
 // 获取单个部门项目
-router.get('/:department/projects/:id', async (req, res) => {
+router.get('/:department/projects/:id', authenticateToken, async (req, res) => {
   try {
     const department = decodeURIComponent(req.params.department);
     const projectId = req.params.id;
@@ -56,7 +60,7 @@ router.get('/:department/projects/:id', async (req, res) => {
 });
 
 // 创建部门项目
-router.post('/:department/projects', async (req, res) => {
+router.post('/:department/projects', authenticateToken, async (req, res) => {
   try {
     const department = decodeURIComponent(req.params.department);
     const projectData = req.body;
@@ -81,7 +85,7 @@ router.post('/:department/projects', async (req, res) => {
 });
 
 // 更新部门项目
-router.put('/:department/projects/:id', async (req, res) => {
+router.put('/:department/projects/:id', authenticateToken, async (req, res) => {
   try {
     const department = decodeURIComponent(req.params.department);
     const projectId = req.params.id;
@@ -112,7 +116,7 @@ router.put('/:department/projects/:id', async (req, res) => {
 });
 
 // 删除部门项目
-router.delete('/:department/projects/:id', async (req, res) => {
+router.delete('/:department/projects/:id', authenticateToken, async (req, res) => {
   try {
     const department = decodeURIComponent(req.params.department);
     const projectId = req.params.id;
@@ -131,7 +135,7 @@ router.delete('/:department/projects/:id', async (req, res) => {
 });
 
 // 获取部门统计信息
-router.get('/:department/stats', async (req, res) => {
+router.get('/:department/stats', authenticateToken, async (req, res) => {
   try {
     const department = decodeURIComponent(req.params.department);
     
