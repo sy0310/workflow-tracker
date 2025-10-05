@@ -160,7 +160,7 @@ async function run(sql, params = []) {
   try {
     const result = await client.query(sql, params);
     return { 
-      id: result.rows[0]?.id || result.insertId || 0, 
+      id: result.rows[0]?.id || 0, 
       changes: result.rowCount || 0 
     };
   } catch (error) {

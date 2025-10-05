@@ -22,7 +22,7 @@ router.post('/register', async (req, res) => {
 
     // 检查用户是否已存在
     const existingUser = await db.get(
-      'SELECT id FROM users WHERE username = ? OR email = ?',
+      'SELECT id FROM users WHERE username = $1 OR email = $2',
       [username, email]
     );
 
@@ -36,7 +36,7 @@ router.post('/register', async (req, res) => {
 
     // 创建用户
     const result = await db.run(
-      'INSERT INTO users (username, email, password_hash) VALUES (?, ?, ?)',
+      'INSERT INTO users (username, email, password_hash) VALUES ($1, $2, $3) RETURNING id',
       [username, email, passwordHash]
     );
 
@@ -74,7 +74,7 @@ router.post('/login', async (req, res) => {
 
     // 查找用户
     const user = await db.get(
-      'SELECT * FROM users WHERE (username = ? OR email = ?) AND is_active = 1',
+      'SELECT * FROM users WHERE (username = $1 OR email = $2) AND is_active = true',
       [username, username]
     );
 
@@ -115,7 +115,7 @@ router.post('/login', async (req, res) => {
 router.get('/me', authenticateToken, async (req, res) => {
   try {
     const user = await db.get(
-      'SELECT id, username, email, role, created_at FROM users WHERE id = ?',
+      'SELECT id, username, email, role, created_at FROM users WHERE id = $1',
       [req.user.userId]
     );
 
@@ -139,7 +139,7 @@ router.put('/profile', authenticateToken, async (req, res) => {
     // 检查用户名和邮箱是否被其他用户使用
     if (username || email) {
       const existingUser = await db.get(
-        'SELECT id FROM users WHERE id != ? AND (username = ? OR email = ?)',
+        'SELECT id FROM users WHERE id != $1 AND (username = $2 OR email = $3)',
         [userId, username, email]
       );
 
@@ -153,12 +153,12 @@ router.put('/profile', authenticateToken, async (req, res) => {
     const values = [];
 
     if (username) {
-      updates.push('username = ?');
+      updates.push(`username = $${values.length + 1}`);
       values.push(username);
     }
 
     if (email) {
-      updates.push('email = ?');
+      updates.push(`email = $${values.length + 1}`);
       values.push(email);
     }
 
@@ -170,13 +170,13 @@ router.put('/profile', authenticateToken, async (req, res) => {
     values.push(userId);
 
     await db.run(
-      `UPDATE users SET ${updates.join(', ')} WHERE id = ?`,
+      `UPDATE users SET ${updates.join(', ')} WHERE id = $${values.length}`,
       values
     );
 
     // 返回更新后的用户信息
     const updatedUser = await db.get(
-      'SELECT id, username, email, role, created_at, updated_at FROM users WHERE id = ?',
+      'SELECT id, username, email, role, created_at, updated_at FROM users WHERE id = $1',
       [userId]
     );
 
@@ -206,7 +206,7 @@ router.put('/password', authenticateToken, async (req, res) => {
 
     // 获取当前用户密码
     const user = await db.get(
-      'SELECT password_hash FROM users WHERE id = ?',
+      'SELECT password_hash FROM users WHERE id = $1',
       [userId]
     );
 
@@ -226,7 +226,7 @@ router.put('/password', authenticateToken, async (req, res) => {
 
     // 更新密码
     await db.run(
-      'UPDATE users SET password_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+      'UPDATE users SET password_hash = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
       [newPasswordHash, userId]
     );
 
@@ -264,7 +264,7 @@ router.delete('/users/:id', authenticateToken, requireAdmin, async (req, res) =>
 
     // 软删除用户
     const result = await db.run(
-      'UPDATE users SET is_active = 0 WHERE id = ?',
+      'UPDATE users SET is_active = false WHERE id = $1',
       [userId]
     );
 
