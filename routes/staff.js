@@ -37,7 +37,7 @@ const upload = multer({
 // 获取所有员工
 router.get('/', async (req, res) => {
   try {
-    const staff = await db.query('SELECT * FROM staff WHERE is_active = 1 ORDER BY name');
+    const staff = await db.query('SELECT * FROM staff WHERE is_active = true ORDER BY name');
     res.json(staff);
   } catch (error) {
     console.error('获取员工列表错误:', error);
@@ -48,7 +48,7 @@ router.get('/', async (req, res) => {
 // 获取单个员工信息
 router.get('/:id', async (req, res) => {
   try {
-    const staff = await db.get('SELECT * FROM staff WHERE id = ? AND is_active = 1', [req.params.id]);
+    const staff = await db.get('SELECT * FROM staff WHERE id = $1 AND is_active = true', [req.params.id]);
     if (!staff) {
       return res.status(404).json({ error: '员工不存在' });
     }
@@ -66,11 +66,11 @@ router.post('/', upload.single('avatar'), async (req, res) => {
     const avatar_url = req.file ? `/uploads/avatars/${req.file.filename}` : null;
 
     const result = await db.run(
-      'INSERT INTO staff (name, wechat_id, wechat_name, email, phone, avatar_url, department, position) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      'INSERT INTO staff (name, wechat_id, wechat_name, email, phone, avatar_url, department, position) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id',
       [name, wechat_id, wechat_name, email, phone, avatar_url, department, position]
     );
 
-    const newStaff = await db.get('SELECT * FROM staff WHERE id = ?', [result.id]);
+    const newStaff = await db.get('SELECT * FROM staff WHERE id = $1', [result.id]);
     res.status(201).json(newStaff);
   } catch (error) {
     console.error('创建员工错误:', error);
@@ -89,7 +89,7 @@ router.put('/:id', upload.single('avatar'), async (req, res) => {
     const staffId = req.params.id;
 
     // 获取当前员工信息
-    const currentStaff = await db.get('SELECT * FROM staff WHERE id = ?', [staffId]);
+    const currentStaff = await db.get('SELECT * FROM staff WHERE id = $1', [staffId]);
     if (!currentStaff) {
       return res.status(404).json({ error: '员工不存在' });
     }
@@ -108,11 +108,11 @@ router.put('/:id', upload.single('avatar'), async (req, res) => {
     }
 
     await db.run(
-      'UPDATE staff SET name = ?, wechat_id = ?, wechat_name = ?, email = ?, phone = ?, avatar_url = ?, department = ?, position = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+      'UPDATE staff SET name = $1, wechat_id = $2, wechat_name = $3, email = $4, phone = $5, avatar_url = $6, department = $7, position = $8, updated_at = CURRENT_TIMESTAMP WHERE id = $9',
       [name, wechat_id, wechat_name, email, phone, avatar_url, department, position, staffId]
     );
 
-    const updatedStaff = await db.get('SELECT * FROM staff WHERE id = ?', [staffId]);
+    const updatedStaff = await db.get('SELECT * FROM staff WHERE id = $1', [staffId]);
     res.json(updatedStaff);
   } catch (error) {
     console.error('更新员工信息错误:', error);
@@ -127,7 +127,7 @@ router.put('/:id', upload.single('avatar'), async (req, res) => {
 // 删除员工（软删除）
 router.delete('/:id', async (req, res) => {
   try {
-    const result = await db.run('UPDATE staff SET is_active = 0 WHERE id = ?', [req.params.id]);
+    const result = await db.run('UPDATE staff SET is_active = false WHERE id = $1', [req.params.id]);
     if (result.changes === 0) {
       return res.status(404).json({ error: '员工不存在' });
     }
@@ -143,7 +143,7 @@ router.get('/search/:keyword', async (req, res) => {
   try {
     const keyword = `%${req.params.keyword}%`;
     const staff = await db.query(
-      'SELECT * FROM staff WHERE is_active = 1 AND (name LIKE ? OR wechat_name LIKE ? OR department LIKE ?) ORDER BY name',
+      'SELECT * FROM staff WHERE is_active = true AND (name LIKE $1 OR wechat_name LIKE $2 OR department LIKE $3) ORDER BY name',
       [keyword, keyword, keyword]
     );
     res.json(staff);

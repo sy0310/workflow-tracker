@@ -20,17 +20,21 @@ router.get('/', async (req, res) => {
     `;
     const params = [];
 
+    let paramCount = 1;
     if (status) {
-      sql += ' AND t.status = ?';
+      sql += ` AND t.status = $${paramCount}`;
       params.push(status);
+      paramCount++;
     }
     if (assignee_id) {
-      sql += ' AND t.assignee_id = ?';
+      sql += ` AND t.assignee_id = $${paramCount}`;
       params.push(assignee_id);
+      paramCount++;
     }
     if (priority) {
-      sql += ' AND t.priority = ?';
+      sql += ` AND t.priority = $${paramCount}`;
       params.push(priority);
+      paramCount++;
     }
 
     sql += ' ORDER BY t.created_at DESC';
@@ -43,7 +47,7 @@ router.get('/', async (req, res) => {
         const participantIds = JSON.parse(task.participants);
         if (participantIds.length > 0) {
           const participants = await db.query(
-            'SELECT id, name, avatar_url FROM staff WHERE id IN (' + participantIds.map(() => '?').join(',') + ')',
+            'SELECT id, name, avatar_url FROM staff WHERE id IN (' + participantIds.map((_, i) => `$${i + 1}`).join(',') + ')',
             participantIds
           );
           task.participants_info = participants;
@@ -73,7 +77,7 @@ router.get('/:id', async (req, res) => {
       FROM tasks t
       LEFT JOIN staff s1 ON t.assignee_id = s1.id
       LEFT JOIN staff s2 ON t.created_by = s2.id
-      WHERE t.id = ?
+      WHERE t.id = $1
     `, [req.params.id]);
 
     if (!task) {
@@ -85,7 +89,7 @@ router.get('/:id', async (req, res) => {
       const participantIds = JSON.parse(task.participants);
       if (participantIds.length > 0) {
         const participants = await db.query(
-          'SELECT id, name, avatar_url, wechat_id FROM staff WHERE id IN (' + participantIds.map(() => '?').join(',') + ')',
+          'SELECT id, name, avatar_url, wechat_id FROM staff WHERE id IN (' + participantIds.map((_, i) => `$${i + 1}`).join(',') + ')',
           participantIds
         );
         task.participants_info = participants;
@@ -118,7 +122,7 @@ router.post('/', async (req, res) => {
     } = req.body;
 
     const result = await db.run(
-      'INSERT INTO tasks (title, description, assignee_id, participants, priority, start_time, estimated_completion_time, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      'INSERT INTO tasks (title, description, assignee_id, participants, priority, start_time, estimated_completion_time, created_by) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id',
       [title, description, assignee_id, JSON.stringify(participants || []), priority, start_time, estimated_completion_time, created_by]
     );
 
@@ -130,7 +134,7 @@ router.post('/', async (req, res) => {
       FROM tasks t
       LEFT JOIN staff s1 ON t.assignee_id = s1.id
       LEFT JOIN staff s2 ON t.created_by = s2.id
-      WHERE t.id = ?
+      WHERE t.id = $1
     `, [result.id]);
 
     // 处理参与人信息
@@ -138,7 +142,7 @@ router.post('/', async (req, res) => {
       const participantIds = JSON.parse(newTask.participants);
       if (participantIds.length > 0) {
         const participants_info = await db.query(
-          'SELECT id, name, avatar_url FROM staff WHERE id IN (' + participantIds.map(() => '?').join(',') + ')',
+          'SELECT id, name, avatar_url FROM staff WHERE id IN (' + participantIds.map((_, i) => `$${i + 1}`).join(',') + ')',
           participantIds
         );
         newTask.participants_info = participants_info;
@@ -180,7 +184,7 @@ router.put('/:id', async (req, res) => {
     }
 
     await db.run(
-      'UPDATE tasks SET title = ?, description = ?, assignee_id = ?, participants = ?, priority = ?, status = ?, start_time = ?, estimated_completion_time = ?, actual_completion_time = ? WHERE id = ?',
+      'UPDATE tasks SET title = $1, description = $2, assignee_id = $3, participants = $4, priority = $5, status = $6, start_time = $7, estimated_completion_time = $8, actual_completion_time = $9 WHERE id = $10',
       [title, description, assignee_id, JSON.stringify(participants || []), priority, status, start_time, estimated_completion_time, completionTime, taskId]
     );
 
@@ -192,7 +196,7 @@ router.put('/:id', async (req, res) => {
       FROM tasks t
       LEFT JOIN staff s1 ON t.assignee_id = s1.id
       LEFT JOIN staff s2 ON t.created_by = s2.id
-      WHERE t.id = ?
+      WHERE t.id = $1
     `, [taskId]);
 
     // 处理参与人信息
@@ -200,7 +204,7 @@ router.put('/:id', async (req, res) => {
       const participantIds = JSON.parse(updatedTask.participants);
       if (participantIds.length > 0) {
         const participants_info = await db.query(
-          'SELECT id, name, avatar_url FROM staff WHERE id IN (' + participantIds.map(() => '?').join(',') + ')',
+          'SELECT id, name, avatar_url FROM staff WHERE id IN (' + participantIds.map((_, i) => `$${i + 1}`).join(',') + ')',
           participantIds
         );
         updatedTask.participants_info = participants_info;
@@ -221,7 +225,7 @@ router.put('/:id', async (req, res) => {
 // 删除任务
 router.delete('/:id', async (req, res) => {
   try {
-    const result = await db.run('DELETE FROM tasks WHERE id = ?', [req.params.id]);
+    const result = await db.run('DELETE FROM tasks WHERE id = $1', [req.params.id]);
     if (result.changes === 0) {
       return res.status(404).json({ error: '任务不存在' });
     }
@@ -271,7 +275,7 @@ router.get('/upcoming/deadlines', async (req, res) => {
       LEFT JOIN staff s2 ON t.created_by = s2.id
       WHERE t.status IN (1, 2) 
         AND t.estimated_completion_time IS NOT NULL
-        AND t.estimated_completion_time <= ?
+        AND t.estimated_completion_time <= $1
       ORDER BY t.estimated_completion_time ASC
     `, [upcomingDate]);
 
