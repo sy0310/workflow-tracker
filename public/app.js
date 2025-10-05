@@ -509,10 +509,252 @@ async function deleteProject(departmentName, projectId, projectName) {
     }
 }
 
-// 编辑项目（暂未实现）
-function editProject(departmentName, projectId) {
-    showAlert('编辑功能开发中...', 'info');
-    // TODO: 实现编辑功能
+// 编辑项目
+async function editProject(departmentName, projectId) {
+    try {
+        // 获取项目信息
+        const response = await fetch(`/api/departments/${encodeURIComponent(departmentName)}/projects`, {
+            headers: AuthManager.getAuthHeaders()
+        });
+        
+        if (!response.ok) {
+            showAlert('获取项目列表失败', 'danger');
+            return;
+        }
+        
+        const projects = await response.json();
+        const project = projects.find(p => p.id === projectId);
+        
+        if (!project) {
+            showAlert('项目不存在', 'danger');
+            return;
+        }
+        
+        // 填充基础信息
+        document.getElementById('edit-project-id').value = project.id;
+        document.getElementById('edit-project-department').value = departmentName;
+        document.getElementById('edit-project-name').value = project.项目名称 || '';
+        document.getElementById('edit-project-description').value = project.项目描述 || '';
+        document.getElementById('edit-project-assignee').value = project.负责人 || '';
+        document.getElementById('edit-project-priority').value = project.优先级 || 2;
+        document.getElementById('edit-project-status').value = project.状态 || 1;
+        
+        // 处理时间字段
+        if (project.开始时间) {
+            document.getElementById('edit-project-start-time').value = formatDateTimeForInput(project.开始时间);
+        }
+        if (project.预计完成时间) {
+            document.getElementById('edit-project-end-time').value = formatDateTimeForInput(project.预计完成时间);
+        }
+        
+        // 生成部门特有字段
+        updateEditDepartmentSpecificFields(departmentName, project);
+        
+        // 显示模态框
+        const modal = new bootstrap.Modal(document.getElementById('editProjectModal'));
+        modal.show();
+    } catch (error) {
+        console.error('加载项目信息失败:', error);
+        showAlert('加载项目信息失败', 'danger');
+    }
+}
+
+// 更新编辑表单的部门特有字段
+function updateEditDepartmentSpecificFields(department, project) {
+    const container = document.getElementById('edit-department-specific-fields');
+    let html = '<hr><h6 class="mb-3">部门特有信息</h6>';
+    
+    switch (department) {
+        case '产业分析':
+            html += `
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="edit-analysis-type" class="form-label">分析类型</label>
+                            <input type="text" class="form-control" id="edit-analysis-type" value="${project.分析类型 || ''}">
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="edit-target-industry" class="form-label">目标行业</label>
+                            <input type="text" class="form-control" id="edit-target-industry" value="${project.目标行业 || ''}">
+                        </div>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label for="edit-analysis-scope" class="form-label">分析范围</label>
+                    <textarea class="form-control" id="edit-analysis-scope" rows="2">${project.分析范围 || ''}</textarea>
+                </div>
+                <div class="mb-3">
+                    <label for="edit-data-sources" class="form-label">数据来源</label>
+                    <textarea class="form-control" id="edit-data-sources" rows="2">${project.数据来源 || ''}</textarea>
+                </div>
+            `;
+            break;
+        case '创意实践':
+            html += `
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="edit-creative-type" class="form-label">创意类型</label>
+                            <input type="text" class="form-control" id="edit-creative-type" value="${project.创意类型 || ''}">
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="edit-target-users" class="form-label">目标用户</label>
+                            <input type="text" class="form-control" id="edit-target-users" value="${project.目标用户 || ''}">
+                        </div>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label for="edit-creative-concept" class="form-label">创意概念</label>
+                    <textarea class="form-control" id="edit-creative-concept" rows="2">${project.创意概念 || ''}</textarea>
+                </div>
+            `;
+            break;
+        case '活动策划':
+            html += `
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="edit-event-type" class="form-label">活动类型</label>
+                            <input type="text" class="form-control" id="edit-event-type" value="${project.活动类型 || ''}">
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="edit-target-audience" class="form-label">目标受众</label>
+                            <input type="text" class="form-control" id="edit-target-audience" value="${project.目标受众 || ''}">
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="edit-event-scale" class="form-label">活动规模</label>
+                            <input type="text" class="form-control" id="edit-event-scale" value="${project.活动规模 || ''}">
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="edit-event-location" class="form-label">活动地点</label>
+                            <input type="text" class="form-control" id="edit-event-location" value="${project.活动地点 || ''}">
+                        </div>
+                    </div>
+                </div>
+            `;
+            break;
+        case '资源拓展':
+            html += `
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="edit-resource-type" class="form-label">资源类型</label>
+                            <input type="text" class="form-control" id="edit-resource-type" value="${project.资源类型 || ''}">
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="edit-target-object" class="form-label">目标对象</label>
+                            <input type="text" class="form-control" id="edit-target-object" value="${project.目标对象 || ''}">
+                        </div>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label for="edit-expansion-method" class="form-label">拓展方式</label>
+                    <textarea class="form-control" id="edit-expansion-method" rows="2">${project.拓展方式 || ''}</textarea>
+                </div>
+            `;
+            break;
+    }
+    
+    container.innerHTML = html;
+}
+
+// 更新项目
+async function updateProject() {
+    try {
+        const projectId = document.getElementById('edit-project-id').value;
+        const department = document.getElementById('edit-project-department').value;
+        
+        if (!department) {
+            showAlert('部门信息丢失', 'danger');
+            return;
+        }
+        
+        // 构建项目数据
+        const projectData = {
+            项目名称: document.getElementById('edit-project-name').value,
+            项目描述: document.getElementById('edit-project-description').value,
+            负责人: document.getElementById('edit-project-assignee').value,
+            优先级: parseInt(document.getElementById('edit-project-priority').value),
+            状态: parseInt(document.getElementById('edit-project-status').value),
+            开始时间: document.getElementById('edit-project-start-time').value,
+            预计完成时间: document.getElementById('edit-project-end-time').value
+        };
+        
+        // 添加部门特有字段
+        switch (department) {
+            case '产业分析':
+                projectData.分析类型 = document.getElementById('edit-analysis-type')?.value || '';
+                projectData.目标行业 = document.getElementById('edit-target-industry')?.value || '';
+                projectData.分析范围 = document.getElementById('edit-analysis-scope')?.value || '';
+                projectData.数据来源 = document.getElementById('edit-data-sources')?.value || '';
+                break;
+            case '创意实践':
+                projectData.创意类型 = document.getElementById('edit-creative-type')?.value || '';
+                projectData.目标用户 = document.getElementById('edit-target-users')?.value || '';
+                projectData.创意概念 = document.getElementById('edit-creative-concept')?.value || '';
+                break;
+            case '活动策划':
+                projectData.活动类型 = document.getElementById('edit-event-type')?.value || '';
+                projectData.目标受众 = document.getElementById('edit-target-audience')?.value || '';
+                projectData.活动规模 = document.getElementById('edit-event-scale')?.value || '';
+                projectData.活动地点 = document.getElementById('edit-event-location')?.value || '';
+                break;
+            case '资源拓展':
+                projectData.资源类型 = document.getElementById('edit-resource-type')?.value || '';
+                projectData.目标对象 = document.getElementById('edit-target-object')?.value || '';
+                projectData.拓展方式 = document.getElementById('edit-expansion-method')?.value || '';
+                break;
+        }
+        
+        const response = await fetch(`/api/departments/${encodeURIComponent(department)}/projects/${projectId}`, {
+            method: 'PUT',
+            headers: AuthManager.getAuthHeaders(),
+            body: JSON.stringify(projectData)
+        });
+        
+        if (response.ok) {
+            showAlert('项目更新成功', 'success');
+            bootstrap.Modal.getInstance(document.getElementById('editProjectModal')).hide();
+            document.getElementById('editProjectForm').reset();
+            
+            // 刷新项目列表
+            if (currentDepartment === department) {
+                await loadDepartmentProjects(department);
+            }
+        } else {
+            const error = await response.json();
+            showAlert(error.error || '更新项目失败', 'danger');
+        }
+    } catch (error) {
+        console.error('更新项目失败:', error);
+        showAlert('更新项目失败', 'danger');
+    }
+}
+
+// 辅助函数：格式化日期时间为 input[type="datetime-local"] 格式
+function formatDateTimeForInput(dateString) {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
 }
 
 // 加载任务统计
@@ -1100,8 +1342,79 @@ function deleteTask(taskId) {
     }
 }
 
-function editStaff(staffId) {
-    showAlert('编辑功能开发中...', 'info');
+async function editStaff(staffId) {
+    try {
+        // 获取员工信息
+        const response = await fetch(`/api/staff/${staffId}`, {
+            headers: AuthManager.getAuthHeaders()
+        });
+        
+        if (!response.ok) {
+            showAlert('获取员工信息失败', 'danger');
+            return;
+        }
+        
+        const staff = await response.json();
+        
+        // 填充表单
+        document.getElementById('edit-staff-id').value = staff.id;
+        document.getElementById('edit-staff-name').value = staff.name || '';
+        document.getElementById('edit-staff-wechat-id').value = staff.wechat_id || '';
+        document.getElementById('edit-staff-wechat-name').value = staff.wechat_name || '';
+        document.getElementById('edit-staff-email').value = staff.email || '';
+        document.getElementById('edit-staff-phone').value = staff.phone || '';
+        document.getElementById('edit-staff-department').value = staff.department || '';
+        document.getElementById('edit-staff-position').value = staff.position || '';
+        
+        // 显示模态框
+        const modal = new bootstrap.Modal(document.getElementById('editStaffModal'));
+        modal.show();
+    } catch (error) {
+        console.error('加载员工信息失败:', error);
+        showAlert('加载员工信息失败', 'danger');
+    }
+}
+
+async function updateStaff() {
+    try {
+        const staffId = document.getElementById('edit-staff-id').value;
+        const formData = new FormData();
+        
+        formData.append('name', document.getElementById('edit-staff-name').value);
+        formData.append('wechat_id', document.getElementById('edit-staff-wechat-id').value);
+        formData.append('wechat_name', document.getElementById('edit-staff-wechat-name').value);
+        formData.append('email', document.getElementById('edit-staff-email').value);
+        formData.append('phone', document.getElementById('edit-staff-phone').value);
+        formData.append('department', document.getElementById('edit-staff-department').value);
+        formData.append('position', document.getElementById('edit-staff-position').value);
+        
+        // 处理头像
+        const avatarFile = document.getElementById('edit-staff-avatar').files[0];
+        if (avatarFile) {
+            formData.append('avatar', avatarFile);
+        }
+        
+        const response = await fetch(`/api/staff/${staffId}`, {
+            method: 'PUT',
+            headers: {
+                'Authorization': `Bearer ${AuthManager.getToken()}`
+            },
+            body: formData
+        });
+        
+        if (response.ok) {
+            showAlert('员工信息更新成功', 'success');
+            bootstrap.Modal.getInstance(document.getElementById('editStaffModal')).hide();
+            document.getElementById('editStaffForm').reset();
+            await loadStaff();
+        } else {
+            const error = await response.json();
+            showAlert(error.error || '更新员工信息失败', 'danger');
+        }
+    } catch (error) {
+        console.error('更新员工信息失败:', error);
+        showAlert('更新员工信息失败', 'danger');
+    }
 }
 
 async function deleteStaff(staffId) {

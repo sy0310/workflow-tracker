@@ -572,6 +572,159 @@
         </div>
     </div>
 
+    <!-- 编辑人员模态框 -->
+    <div class="modal fade" id="editStaffModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">编辑人员</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="editStaffForm" enctype="multipart/form-data">
+                        <input type="hidden" id="edit-staff-id">
+                        <div class="mb-3">
+                            <label for="edit-staff-name" class="form-label">姓名 *</label>
+                            <input type="text" class="form-control" id="edit-staff-name" required>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="edit-staff-wechat-id" class="form-label">微信ID</label>
+                                    <input type="text" class="form-control" id="edit-staff-wechat-id">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="edit-staff-wechat-name" class="form-label">微信昵称</label>
+                                    <input type="text" class="form-control" id="edit-staff-wechat-name">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="edit-staff-email" class="form-label">邮箱</label>
+                                    <input type="email" class="form-control" id="edit-staff-email">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="edit-staff-phone" class="form-label">电话</label>
+                                    <input type="tel" class="form-control" id="edit-staff-phone">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="edit-staff-department" class="form-label">部门</label>
+                                    <input type="text" class="form-control" id="edit-staff-department">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="edit-staff-position" class="form-label">职位</label>
+                                    <input type="text" class="form-control" id="edit-staff-position">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="edit-staff-avatar" class="form-label">头像</label>
+                            <input type="file" class="form-control" id="edit-staff-avatar" accept="image/*">
+                            <small class="text-muted">不选择则保持原头像</small>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-primary" onclick="updateStaff()">保存修改</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 编辑项目模态框 -->
+    <div class="modal fade" id="editProjectModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">编辑项目</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="editProjectForm">
+                        <input type="hidden" id="edit-project-id">
+                        <input type="hidden" id="edit-project-department">
+                        
+                        <!-- 基础信息 -->
+                        <div class="mb-3">
+                            <label for="edit-project-name" class="form-label">项目名称 <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="edit-project-name" required>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="edit-project-description" class="form-label">项目描述</label>
+                            <textarea class="form-control" id="edit-project-description" rows="3"></textarea>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="edit-project-assignee" class="form-label">负责人</label>
+                                    <input type="text" class="form-control" id="edit-project-assignee">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="edit-project-priority" class="form-label">优先级 <span class="text-danger">*</span></label>
+                                    <select class="form-select" id="edit-project-priority" required>
+                                        <option value="1">低</option>
+                                        <option value="2">中</option>
+                                        <option value="3">高</option>
+                                        <option value="4">紧急</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="edit-project-start-time" class="form-label">开始时间</label>
+                                    <input type="datetime-local" class="form-control" id="edit-project-start-time">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="edit-project-end-time" class="form-label">预计完成时间</label>
+                                    <input type="datetime-local" class="form-control" id="edit-project-end-time">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="edit-project-status" class="form-label">状态</label>
+                            <select class="form-select" id="edit-project-status">
+                                <option value="1">待开始</option>
+                                <option value="2">进行中</option>
+                                <option value="3">已完成</option>
+                                <option value="4">已取消</option>
+                            </select>
+                        </div>
+                        
+                        <!-- 部门特有字段将通过 JavaScript 动态生成 -->
+                        <div id="edit-department-specific-fields"></div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-primary" onclick="updateProject()">保存修改</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="auth.js"></script>
     <script src="app.js"></script>
