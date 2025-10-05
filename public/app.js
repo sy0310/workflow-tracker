@@ -235,171 +235,17 @@ function showCreateProjectModal(presetDepartment = null) {
     modal.show();
 }
 
-// 更新部门特有字段
+// 更新部门特有字段（使用配置文件）
 function updateDepartmentSpecificFields(department) {
     const container = document.getElementById('department-specific-fields');
     
-    if (!department) {
+    if (!department || !DEPARTMENT_FIELDS[department]) {
         container.innerHTML = '';
         return;
     }
     
     let html = '<hr><h6 class="mb-3">部门特有信息</h6>';
-    
-    switch (department) {
-        case '产业分析':
-            html += `
-                <div class="row">
-                    <div class="col-md-6">
-                        <div class="mb-3">
-                            <label for="analysis-type" class="form-label">分析类型</label>
-                            <select class="form-select" id="analysis-type">
-                                <option value="">请选择</option>
-                                <option value="市场分析">市场分析</option>
-                                <option value="竞品分析">竞品分析</option>
-                                <option value="趋势分析">趋势分析</option>
-                                <option value="用户分析">用户分析</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="mb-3">
-                            <label for="target-industry" class="form-label">目标行业</label>
-                            <input type="text" class="form-control" id="target-industry" placeholder="如：新能源汽车">
-                        </div>
-                    </div>
-                </div>
-                <div class="mb-3">
-                    <label for="analysis-scope" class="form-label">分析范围</label>
-                    <textarea class="form-control" id="analysis-scope" rows="2" placeholder="描述分析的具体范围和内容"></textarea>
-                </div>
-                <div class="mb-3">
-                    <label for="data-sources" class="form-label">数据来源</label>
-                    <input type="text" class="form-control" id="data-sources" placeholder="如：公开数据、调研报告、内部数据等">
-                </div>
-            `;
-            break;
-            
-        case '创意实践':
-            html += `
-                <div class="row">
-                    <div class="col-md-6">
-                        <div class="mb-3">
-                            <label for="creative-type" class="form-label">创意类型</label>
-                            <select class="form-select" id="creative-type">
-                                <option value="">请选择</option>
-                                <option value="产品创意">产品创意</option>
-                                <option value="营销创意">营销创意</option>
-                                <option value="服务创意">服务创意</option>
-                                <option value="流程创意">流程创意</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="mb-3">
-                            <label for="target-users" class="form-label">目标用户</label>
-                            <input type="text" class="form-control" id="target-users" placeholder="如：企业客户、个人用户">
-                        </div>
-                    </div>
-                </div>
-                <div class="mb-3">
-                    <label for="creative-concept" class="form-label">创意概念</label>
-                    <textarea class="form-control" id="creative-concept" rows="2" placeholder="描述创意的核心概念和想法"></textarea>
-                </div>
-                <div class="mb-3">
-                    <label for="implementation-plan" class="form-label">实施计划</label>
-                    <textarea class="form-control" id="implementation-plan" rows="2" placeholder="描述具体的实施步骤和计划"></textarea>
-                </div>
-            `;
-            break;
-            
-        case '活动策划':
-            html += `
-                <div class="row">
-                    <div class="col-md-6">
-                        <div class="mb-3">
-                            <label for="activity-type" class="form-label">活动类型</label>
-                            <select class="form-select" id="activity-type">
-                                <option value="">请选择</option>
-                                <option value="线上活动">线上活动</option>
-                                <option value="线下活动">线下活动</option>
-                                <option value="混合活动">混合活动</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="mb-3">
-                            <label for="target-audience" class="form-label">目标受众</label>
-                            <input type="text" class="form-control" id="target-audience" placeholder="如：媒体和客户">
-                        </div>
-                    </div>
-                </div>
-                <div class="row">
-                    <div class="col-md-6">
-                        <div class="mb-3">
-                            <label for="activity-scale" class="form-label">活动规模</label>
-                            <select class="form-select" id="activity-scale">
-                                <option value="">请选择</option>
-                                <option value="小型">小型 (50人以下)</option>
-                                <option value="中型">中型 (50-200人)</option>
-                                <option value="大型">大型 (200人以上)</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="mb-3">
-                            <label for="budget-range" class="form-label">预算范围</label>
-                            <input type="text" class="form-control" id="budget-range" placeholder="如：10-50万">
-                        </div>
-                    </div>
-                </div>
-                <div class="mb-3">
-                    <label for="activity-location" class="form-label">活动地点</label>
-                    <input type="text" class="form-control" id="activity-location" placeholder="如：上海国际会议中心">
-                </div>
-            `;
-            break;
-            
-        case '资源拓展':
-            html += `
-                <div class="row">
-                    <div class="col-md-6">
-                        <div class="mb-3">
-                            <label for="resource-type" class="form-label">资源类型</label>
-                            <select class="form-select" id="resource-type">
-                                <option value="">请选择</option>
-                                <option value="人力资源">人力资源</option>
-                                <option value="技术资源">技术资源</option>
-                                <option value="资金资源">资金资源</option>
-                                <option value="渠道资源">渠道资源</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="mb-3">
-                            <label for="target-object" class="form-label">目标对象</label>
-                            <input type="text" class="form-control" id="target-object" placeholder="如：AI技术公司">
-                        </div>
-                    </div>
-                </div>
-                <div class="mb-3">
-                    <label for="expansion-method" class="form-label">拓展方式</label>
-                    <select class="form-select" id="expansion-method">
-                        <option value="">请选择</option>
-                        <option value="合作">合作</option>
-                        <option value="收购">收购</option>
-                        <option value="联盟">联盟</option>
-                        <option value="投资">投资</option>
-                    </select>
-                </div>
-                <div class="mb-3">
-                    <label for="resource-value" class="form-label">资源价值</label>
-                    <textarea class="form-control" id="resource-value" rows="2" placeholder="描述资源的潜在价值和重要性"></textarea>
-                </div>
-            `;
-            break;
-    }
-    
+    html += generateTwoColumnFieldsHTML(DEPARTMENT_FIELDS[department], {}, '');
     container.innerHTML = html;
 }
 
@@ -426,37 +272,9 @@ async function createProject() {
             创建者: currentUserId
         };
         
-        // 添加部门特有字段
-        switch (department) {
-            case '产业分析':
-                projectData.分析类型 = document.getElementById('analysis-type').value;
-                projectData.目标行业 = document.getElementById('target-industry').value;
-                projectData.分析范围 = document.getElementById('analysis-scope').value;
-                projectData.数据来源 = document.getElementById('data-sources').value;
-                break;
-                
-            case '创意实践':
-                projectData.创意类型 = document.getElementById('creative-type').value;
-                projectData.目标用户 = document.getElementById('target-users').value;
-                projectData.创意概念 = document.getElementById('creative-concept').value;
-                projectData.实施计划 = document.getElementById('implementation-plan').value;
-                break;
-                
-            case '活动策划':
-                projectData.活动类型 = document.getElementById('activity-type').value;
-                projectData.目标受众 = document.getElementById('target-audience').value;
-                projectData.活动规模 = document.getElementById('activity-scale').value;
-                projectData.预算范围 = document.getElementById('budget-range').value;
-                projectData.活动地点 = document.getElementById('activity-location').value;
-                break;
-                
-            case '资源拓展':
-                projectData.资源类型 = document.getElementById('resource-type').value;
-                projectData.目标对象 = document.getElementById('target-object').value;
-                projectData.拓展方式 = document.getElementById('expansion-method').value;
-                projectData.资源价值 = document.getElementById('resource-value').value;
-                break;
-        }
+        // 添加部门特有字段（使用配置文件）
+        const departmentFields = collectFieldData(department, '');
+        Object.assign(projectData, departmentFields);
         
         const response = await fetch(`/api/departments/${encodeURIComponent(department)}/projects`, {
             method: 'POST',
