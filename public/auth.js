@@ -12,16 +12,21 @@ class AuthManager {
     }
 
     bindEvents() {
-        // 登录表单提交
-        document.getElementById('loginForm').addEventListener('submit', (e) => {
-            e.preventDefault();
-            this.login();
-        });
+        // 只在登录页面绑定事件
+        const loginForm = document.getElementById('loginForm');
+        if (loginForm) {
+            loginForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                this.login();
+            });
+        }
 
-        // 注册表单验证
-        document.getElementById('regPasswordConfirm').addEventListener('input', () => {
-            this.validatePasswordConfirm();
-        });
+        const regPasswordConfirm = document.getElementById('regPasswordConfirm');
+        if (regPasswordConfirm) {
+            regPasswordConfirm.addEventListener('input', () => {
+                this.validatePasswordConfirm();
+            });
+        }
     }
 
     async login() {

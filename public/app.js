@@ -1002,6 +1002,16 @@ function getPriorityClass(priority) {
     return classMap[priority] || 'medium';
 }
 
+function getPriorityColor(priority) {
+    const colorMap = { 1: 'secondary', 2: 'info', 3: 'warning', 4: 'danger' };
+    return colorMap[priority] || 'info';
+}
+
+function getStatusColor(status) {
+    const colorMap = { 1: 'secondary', 2: 'primary', 3: 'success', 4: 'dark' };
+    return colorMap[status] || 'secondary';
+}
+
 function getNotificationStatusText(status) {
     const statusMap = { 1: '待发送', 2: '已发送', 3: '已读' };
     return statusMap[status] || '未知';
