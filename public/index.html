@@ -190,14 +190,22 @@
                                 </div>
                                 <div class="col-md-6">
                                     <div class="d-flex gap-2">
-                                        <select class="form-select form-select-sm" id="status-filter">
+                                        <select class="form-select form-select-sm" id="department-filter" onchange="loadTasks()">
+                                            <option value="">全部部门</option>
+                                            <option value="通用任务">通用任务</option>
+                                            <option value="产业分析">产业分析</option>
+                                            <option value="创意实践">创意实践</option>
+                                            <option value="活动策划">活动策划</option>
+                                            <option value="资源拓展">资源拓展</option>
+                                        </select>
+                                        <select class="form-select form-select-sm" id="status-filter" onchange="loadTasks()">
                                             <option value="">全部状态</option>
                                             <option value="1">待开始</option>
                                             <option value="2">进行中</option>
                                             <option value="3">已完成</option>
                                             <option value="4">已取消</option>
                                         </select>
-                                        <select class="form-select form-select-sm" id="priority-filter">
+                                        <select class="form-select form-select-sm" id="priority-filter" onchange="loadTasks()">
                                             <option value="">全部优先级</option>
                                             <option value="1">低</option>
                                             <option value="2">中</option>
