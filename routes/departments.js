@@ -94,9 +94,9 @@ router.put('/:department/projects/:id', authenticateToken, async (req, res) => {
     // 构建动态 SQL
     const columns = Object.keys(updateData);
     const values = Object.values(updateData);
-    const setClause = columns.map((col, index) => `${col} = $${index + 1}`).join(', ');
+    const setClause = columns.map((col, index) => `"${col}" = $${index + 1}`).join(', ');
     
-    const sql = `UPDATE "${department}" SET ${setClause}, 更新时间 = CURRENT_TIMESTAMP WHERE id = $${columns.length + 1}`;
+    const sql = `UPDATE "${department}" SET ${setClause}, "更新时间" = CURRENT_TIMESTAMP WHERE id = $${columns.length + 1}`;
     values.push(projectId);
     
     const result = await db.run(sql, values);
@@ -111,7 +111,12 @@ router.put('/:department/projects/:id', authenticateToken, async (req, res) => {
     res.json(updatedProject);
   } catch (error) {
     console.error('更新部门项目错误:', error);
-    res.status(500).json({ error: '更新项目失败' });
+    console.error('错误详情:', error.message);
+    console.error('错误堆栈:', error.stack);
+    console.error('更新数据:', req.body);
+    console.error('部门:', req.params.department);
+    console.error('项目ID:', req.params.id);
+    res.status(500).json({ error: '更新项目失败', details: error.message });
   }
 });
 
