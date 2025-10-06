@@ -1,324 +1,272 @@
 const express = require('express');
 const router = express.Router();
-// 根据环境变量选择数据库
-const usePostgres = process.env.DATABASE_URL;
-const db = usePostgres ? require('../database-postgres') : require('../database');
-const { v4: uuidv4 } = require('uuid');
-const moment = require('moment');
+const authenticateToken = require('../middleware/authenticateToken');
 
-// AI助手对话接口
-router.post('/chat', async (req, res) => {
-  try {
-    const { message, user_id, conversation_id } = req.body;
-    
-    let currentConversationId = conversation_id;
-    
-    // 如果没有会话ID，创建新会话
-    if (!currentConversationId) {
-      currentConversationId = uuidv4();
+// Groq API 配置
+const GROQ_API_KEY = process.env.GROQ_API_KEY;
+const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
+
+// AI 对话历史存储（简单实现，生产环境应使用数据库）
+const conversations = new Map();
+
+/**
+ * 调用 Groq API
+ */
+async function callGroqAPI(messages, temperature = 0.7) {
+    if (!GROQ_API_KEY) {
+        throw new Error('GROQ_API_KEY 未配置');
     }
 
-    // 解析用户消息，提取任务信息
-    const taskInfo = parseTaskInfo(message);
-    
-    // 生成AI响应
-    const aiResponse = generateAIResponse(taskInfo, message);
-    
-    // 保存对话记录
-    await db.run(
-      'INSERT INTO ai_conversations (user_id, conversation_id, user_message, ai_response, task_data) VALUES (?, ?, ?, ?, ?)',
-      [user_id, currentConversationId, message, aiResponse.response, JSON.stringify(taskInfo)]
-    );
-
-    res.json({
-      conversation_id: currentConversationId,
-      ai_response: aiResponse.response,
-      task_info: taskInfo,
-      suggestions: aiResponse.suggestions,
-      can_create_task: aiResponse.can_create_task
+    const response = await fetch(GROQ_API_URL, {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${GROQ_API_KEY}`,
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            model: 'llama-3.1-70b-versatile', // 使用 Llama 3.1 70B 模型（最智能）
+            messages: messages,
+            temperature: temperature,
+            max_tokens: 1000
+        })
     });
-  } catch (error) {
-    console.error('AI对话错误:', error);
-    res.status(500).json({ error: 'AI对话失败' });
-  }
-});
 
-// 创建任务（基于AI解析的信息）
-router.post('/create-task', async (req, res) => {
-  try {
-    const { task_info, user_id, conversation_id } = req.body;
-    
-    if (!task_info || !task_info.title) {
-      return res.status(400).json({ error: '任务信息不完整' });
+    if (!response.ok) {
+        const error = await response.text();
+        throw new Error(`Groq API 错误: ${error}`);
     }
 
-    // 查找或创建负责人
-    let assignee_id = null;
-    if (task_info.assignee_name) {
-      const assignee = await db.get(
-        'SELECT id FROM staff WHERE name LIKE ? OR wechat_name LIKE ? LIMIT 1',
-        [`%${task_info.assignee_name}%`, `%${task_info.assignee_name}%`]
-      );
-      if (assignee) {
-        assignee_id = assignee.id;
-      }
-    }
+    const data = await response.json();
+    return data.choices[0].message.content;
+}
 
-    // 查找参与人
-    let participants = [];
-    if (task_info.participants && task_info.participants.length > 0) {
-      for (const participantName of task_info.participants) {
-        const participant = await db.get(
-          'SELECT id FROM staff WHERE name LIKE ? OR wechat_name LIKE ? LIMIT 1',
-          [`%${participantName}%`, `%${participantName}%`]
-        );
-        if (participant) {
-          participants.push(participant.id);
+/**
+ * 系统提示词 - 定义 AI 助手的角色和能力
+ */
+const SYSTEM_PROMPT = `你是一个专业的任务管理助手，帮助用户创建和管理工作任务。
+
+你的主要职责：
+1. 理解用户的任务创建需求
+2. 从用户描述中提取关键信息（任务名称、负责人、优先级、时间等）
+3. 智能识别任务所属部门（产业分析/创意实践/活动策划/资源拓展）
+4. 根据部门类型，引导用户补充部门特有字段
+5. 使用友好、专业的语气与用户交流
+
+任务字段说明：
+
+【基础字段】（所有任务必填）
+- 任务名称 *
+- 任务描述
+- 负责人 *
+- 优先级：低/中/高/紧急
+- 状态：待开始/进行中/已完成/已取消
+- 开始时间
+- 预计完成时间
+
+【部门特有字段】
+
+产业分析部（8个字段）：
+1. 分析类型：市场分析/竞品分析/行业研究/趋势预测
+2. 目标行业
+3. 分析范围
+4. 数据来源
+5. 分析方法
+6. 关键发现
+7. 建议措施
+8. 风险因素
+
+创意实践部（8个字段）：
+1. 创意类型：品牌设计/内容创作/活动创意/产品设计
+2. 目标用户
+3. 创意概念
+4. 实施计划
+5. 资源需求
+6. 预期效果
+7. 创新点
+8. 可行性分析
+
+活动策划部（10个字段）：
+1. 活动类型：线上活动/线下活动/混合活动
+2. 目标受众
+3. 活动规模：小型(<50人)/中型(50-200人)/大型(>200人)
+4. 预算范围
+5. 活动地点
+6. 活动时间
+7. 活动流程
+8. 宣传策略
+9. 物料需求
+10. 人员配置
+
+资源拓展部（10个字段）：
+1. 资源类型：合作伙伴/资金/技术/人才
+2. 目标对象
+3. 拓展方式：主动接触/活动对接/平台合作
+4. 资源价值
+5. 获取难度：容易/中等/困难
+6. 预期收益
+7. 风险评估
+8. 拓展计划
+9. 关键联系人
+10. 跟进策略
+
+你的回复格式：
+1. 如果信息不完整，逐步引导用户补充
+2. 使用友好的语气，避免生硬
+3. 每次只询问 1-3 个关键问题
+4. 当信息完整后，以 JSON 格式输出（用 \`\`\`json 包裹）
+
+示例 JSON 输出：
+\`\`\`json
+{
+  "任务名称": "新能源汽车市场分析",
+  "任务描述": "分析2024年新能源汽车市场趋势",
+  "负责人": "张三",
+  "优先级": "高",
+  "状态": "待开始",
+  "开始时间": "2024-10-10",
+  "预计完成时间": "2024-11-15",
+  "部门": "产业分析",
+  "分析类型": "市场分析",
+  "目标行业": "新能源汽车",
+  "分析范围": "全国市场",
+  "数据来源": "行业报告、公开数据"
+}
+\`\`\`
+
+记住：始终保持友好、专业、高效！`;
+
+/**
+ * POST /api/ai/chat
+ * AI 对话接口
+ */
+router.post('/chat', authenticateToken, async (req, res) => {
+    try {
+        const { message, conversationId } = req.body;
+        const userId = req.user.userId;
+
+        if (!message) {
+            return res.status(400).json({ error: '消息不能为空' });
         }
-      }
+
+        // 获取或创建对话历史
+        const convId = conversationId || `${userId}-${Date.now()}`;
+        let messages = conversations.get(convId) || [
+            { role: 'system', content: SYSTEM_PROMPT }
+        ];
+
+        // 添加用户消息
+        messages.push({ role: 'user', content: message });
+
+        // 调用 Groq API
+        const aiResponse = await callGroqAPI(messages);
+
+        // 保存 AI 回复到历史
+        messages.push({ role: 'assistant', content: aiResponse });
+        conversations.set(convId, messages);
+
+        // 检查是否包含 JSON（表示任务信息完整）
+        const jsonMatch = aiResponse.match(/```json\s*([\s\S]*?)\s*```/);
+        const taskData = jsonMatch ? JSON.parse(jsonMatch[1]) : null;
+
+        res.json({
+            response: aiResponse,
+            conversationId: convId,
+            taskData: taskData,
+            hasTaskData: !!taskData
+        });
+
+    } catch (error) {
+        console.error('AI 对话错误:', error);
+        res.status(500).json({ 
+            error: '抱歉，AI 助手暂时无法回复。请稍后再试。',
+            details: error.message 
+        });
     }
-
-    // 创建任务
-    const result = await db.run(
-      'INSERT INTO tasks (title, description, assignee_id, participants, priority, start_time, estimated_completion_time, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-      [
-        task_info.title,
-        task_info.description || '',
-        assignee_id,
-        JSON.stringify(participants),
-        task_info.priority || 2,
-        task_info.start_time || null,
-        task_info.estimated_completion_time || null,
-        user_id
-      ]
-    );
-
-    // 获取创建的任务信息
-    const newTask = await db.get(`
-      SELECT t.*, 
-             s1.name as assignee_name, s1.avatar_url as assignee_avatar,
-             s2.name as creator_name
-      FROM tasks t
-      LEFT JOIN staff s1 ON t.assignee_id = s1.id
-      LEFT JOIN staff s2 ON t.created_by = s2.id
-      WHERE t.id = ?
-    `, [result.id]);
-
-    // 发送创建通知
-    if (assignee_id) {
-      const assignee = await db.get('SELECT * FROM staff WHERE id = ?', [assignee_id]);
-      if (assignee) {
-        require('../services/notificationService').sendTaskCreatedNotification(newTask, assignee);
-      }
-    }
-
-    res.status(201).json({
-      message: '任务创建成功',
-      task: newTask,
-      conversation_id: conversation_id
-    });
-  } catch (error) {
-    console.error('AI创建任务错误:', error);
-    res.status(500).json({ error: '创建任务失败' });
-  }
 });
 
-// 获取对话历史
-router.get('/conversations/:conversation_id', async (req, res) => {
-  try {
-    const conversations = await db.query(
-      'SELECT * FROM ai_conversations WHERE conversation_id = ? ORDER BY created_at ASC',
-      [req.params.conversation_id]
-    );
-    res.json(conversations);
-  } catch (error) {
-    console.error('获取对话历史错误:', error);
-    res.status(500).json({ error: '获取对话历史失败' });
-  }
+/**
+ * POST /api/ai/create-task
+ * 使用 AI 提取的数据创建任务
+ */
+router.post('/create-task', authenticateToken, async (req, res) => {
+    try {
+        const { taskData } = req.body;
+        const db = require('../database-postgres');
+
+        if (!taskData || !taskData.任务名称) {
+            return res.status(400).json({ error: '任务数据不完整' });
+        }
+
+        // 判断是部门任务还是通用任务
+        const department = taskData.部门;
+        delete taskData.部门; // 从数据中移除部门字段
+
+        if (department && ['产业分析', '创意实践', '活动策划', '资源拓展'].includes(department)) {
+            // 创建部门任务
+            const columns = Object.keys(taskData);
+            const values = Object.values(taskData);
+            const placeholders = values.map((_, i) => `$${i + 1}`).join(', ');
+            const columnNames = columns.map(col => `"${col}"`).join(', ');
+
+            const sql = `INSERT INTO "${department}" (${columnNames}) VALUES (${placeholders}) RETURNING *`;
+            const result = await db.query(sql, values);
+
+            res.json({ 
+                success: true, 
+                task: result.rows[0],
+                type: 'department',
+                department: department
+            });
+        } else {
+            // 创建通用任务
+            const sql = `
+                INSERT INTO tasks (title, description, assigned_to, priority, status, start_date, due_date, created_by)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                RETURNING *
+            `;
+            const values = [
+                taskData.任务名称,
+                taskData.任务描述 || '',
+                taskData.负责人,
+                taskData.优先级 || '中',
+                taskData.状态 || '待开始',
+                taskData.开始时间 || new Date(),
+                taskData.预计完成时间,
+                req.user.userId
+            ];
+
+            const result = await db.query(sql, values);
+
+            res.json({ 
+                success: true, 
+                task: result.rows[0],
+                type: 'general'
+            });
+        }
+
+    } catch (error) {
+        console.error('创建任务错误:', error);
+        res.status(500).json({ error: '创建任务失败', details: error.message });
+    }
 });
 
-// 获取用户的对话列表
-router.get('/conversations/user/:user_id', async (req, res) => {
-  try {
-    const conversations = await db.query(
-      'SELECT conversation_id, MAX(created_at) as last_message_time, COUNT(*) as message_count FROM ai_conversations WHERE user_id = ? GROUP BY conversation_id ORDER BY last_message_time DESC',
-      [req.params.user_id]
-    );
-    res.json(conversations);
-  } catch (error) {
-    console.error('获取用户对话列表错误:', error);
-    res.status(500).json({ error: '获取用户对话列表失败' });
-  }
+/**
+ * DELETE /api/ai/conversation/:id
+ * 清除对话历史
+ */
+router.delete('/conversation/:id', authenticateToken, (req, res) => {
+    const { id } = req.params;
+    conversations.delete(id);
+    res.json({ success: true });
 });
 
-// 解析任务信息
-function parseTaskInfo(message) {
-  const taskInfo = {
-    title: '',
-    description: '',
-    assignee_name: '',
-    participants: [],
-    priority: 2, // 默认中等优先级
-    start_time: null,
-    estimated_completion_time: null
-  };
-
-  // 简单的关键词匹配和提取
-  const lines = message.split('\n');
-  
-  for (const line of lines) {
-    const lowerLine = line.toLowerCase().trim();
-    
-    // 提取任务名称
-    if (lowerLine.includes('任务') || lowerLine.includes('项目') || lowerLine.includes('工作')) {
-      if (!taskInfo.title) {
-        taskInfo.title = line.replace(/[任务项目工作：:]/g, '').trim();
-      }
-    }
-    
-    // 提取负责人
-    if (lowerLine.includes('负责人') || lowerLine.includes('分配') || lowerLine.includes('负责')) {
-      const match = line.match(/[负责人分配负责：:]\s*([^\s]+)/);
-      if (match) {
-        taskInfo.assignee_name = match[1].trim();
-      }
-    }
-    
-    // 提取参与人
-    if (lowerLine.includes('参与') || lowerLine.includes('协助') || lowerLine.includes('配合')) {
-      const participants = line.match(/[参与协助配合：:]\s*([^\n]+)/);
-      if (participants) {
-        taskInfo.participants = participants[1].split(/[,，、]/).map(p => p.trim()).filter(p => p);
-      }
-    }
-    
-    // 提取优先级
-    if (lowerLine.includes('紧急') || lowerLine.includes('urgent')) {
-      taskInfo.priority = 4;
-    } else if (lowerLine.includes('高') || lowerLine.includes('high')) {
-      taskInfo.priority = 3;
-    } else if (lowerLine.includes('低') || lowerLine.includes('low')) {
-      taskInfo.priority = 1;
-    }
-    
-    // 提取时间信息
-    if (lowerLine.includes('开始时间') || lowerLine.includes('start')) {
-      const timeMatch = line.match(/(\d{4}-\d{2}-\d{2}|\d{2}-\d{2}|\d{2}\/\d{2}|\d+天后|\d+天|明天|今天)/);
-      if (timeMatch) {
-        taskInfo.start_time = parseTimeString(timeMatch[1]);
-      }
-    }
-    
-    if (lowerLine.includes('完成时间') || lowerLine.includes('截止') || lowerLine.includes('deadline')) {
-      const timeMatch = line.match(/(\d{4}-\d{2}-\d{2}|\d{2}-\d{2}|\d{2}\/\d{2}|\d+天后|\d+天|明天|下周)/);
-      if (timeMatch) {
-        taskInfo.estimated_completion_time = parseTimeString(timeMatch[1]);
-      }
-    }
-  }
-  
-  // 如果没有明确的标题，尝试从第一行提取
-  if (!taskInfo.title && lines.length > 0) {
-    taskInfo.title = lines[0].trim();
-  }
-  
-  // 描述就是整个消息
-  taskInfo.description = message;
-
-  return taskInfo;
-}
-
-// 解析时间字符串
-function parseTimeString(timeStr) {
-  const now = moment();
-  
-  if (timeStr.includes('今天')) {
-    return now.format('YYYY-MM-DD HH:mm:ss');
-  } else if (timeStr.includes('明天')) {
-    return now.add(1, 'day').format('YYYY-MM-DD HH:mm:ss');
-  } else if (timeStr.includes('下周')) {
-    return now.add(1, 'week').format('YYYY-MM-DD HH:mm:ss');
-  } else if (timeStr.includes('天后')) {
-    const days = parseInt(timeStr.match(/(\d+)/)[1]);
-    return now.add(days, 'days').format('YYYY-MM-DD HH:mm:ss');
-  } else if (timeStr.includes('天')) {
-    const days = parseInt(timeStr.match(/(\d+)/)[1]);
-    return now.add(days, 'days').format('YYYY-MM-DD HH:mm:ss');
-  } else if (timeStr.match(/\d{4}-\d{2}-\d{2}/)) {
-    return moment(timeStr).format('YYYY-MM-DD HH:mm:ss');
-  } else if (timeStr.match(/\d{2}-\d{2}/)) {
-    const currentYear = moment().year();
-    return moment(`${currentYear}-${timeStr}`).format('YYYY-MM-DD HH:mm:ss');
-  } else if (timeStr.match(/\d{2}\/\d{2}/)) {
-    const currentYear = moment().year();
-    return moment(`${currentYear}-${timeStr.replace('/', '-')}`).format('YYYY-MM-DD HH:mm:ss');
-  }
-  
-  return null;
-}
-
-// 生成AI响应
-function generateAIResponse(taskInfo, userMessage) {
-  let response = '';
-  let suggestions = [];
-  let can_create_task = false;
-
-  // 检查是否提取到了任务信息
-  if (taskInfo.title) {
-    can_create_task = true;
-    response = `我理解您要创建的任务：\n\n`;
-    response += `📋 任务名称：${taskInfo.title}\n`;
-    
-    if (taskInfo.assignee_name) {
-      response += `👤 负责人：${taskInfo.assignee_name}\n`;
-    }
-    
-    if (taskInfo.participants.length > 0) {
-      response += `👥 参与人：${taskInfo.participants.join(', ')}\n`;
-    }
-    
-    if (taskInfo.priority !== 2) {
-      const priorityText = ['低', '中', '高', '紧急'][taskInfo.priority - 1];
-      response += `⚡ 优先级：${priorityText}\n`;
-    }
-    
-    if (taskInfo.start_time) {
-      response += `🚀 开始时间：${taskInfo.start_time}\n`;
-    }
-    
-    if (taskInfo.estimated_completion_time) {
-      response += `⏰ 预计完成时间：${taskInfo.estimated_completion_time}\n`;
-    }
-    
-    response += `\n请确认信息是否正确，我可以为您创建这个任务。`;
-    
-    suggestions = [
-      '创建任务',
-      '修改信息',
-      '取消创建'
-    ];
-  } else {
-    response = `您好！我是您的任务管理助手。请告诉我您想要创建的任务信息，比如：\n\n`;
-    response += `• 任务名称\n`;
-    response += `• 负责人\n`;
-    response += `• 参与人员\n`;
-    response += `• 优先级（紧急/高/中/低）\n`;
-    response += `• 开始时间\n`;
-    response += `• 预计完成时间\n\n`;
-    response += `您可以这样描述："创建一个网站开发任务，负责人是张三，参与人有李四和王五，优先级高，明天开始，一周后完成"。`;
-    
-    suggestions = [
-      '查看任务列表',
-      '查看员工信息',
-      '查看提醒设置'
-    ];
-  }
-
-  return {
-    response,
-    suggestions,
-    can_create_task
-  };
-}
+/**
+ * POST /api/ai/reset
+ * 重置所有对话（用于测试）
+ */
+router.post('/reset', authenticateToken, (req, res) => {
+    conversations.clear();
+    res.json({ success: true, message: '所有对话已清除' });
+});
 
 module.exports = router;
