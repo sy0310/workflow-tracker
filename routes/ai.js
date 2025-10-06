@@ -281,4 +281,22 @@ router.post('/reset', authenticateToken, (req, res) => {
     res.json({ success: true, message: '所有对话已清除' });
 });
 
+/**
+ * GET /api/ai/test
+ * 测试端点 - 检查环境变量配置
+ */
+router.get('/test', (req, res) => {
+    const hasApiKey = !!GROQ_API_KEY;
+    const apiKeyPrefix = hasApiKey ? GROQ_API_KEY.substring(0, 10) + '...' : 'N/A';
+    
+    res.json({
+        status: hasApiKey ? 'ok' : 'error',
+        message: hasApiKey ? 'GROQ_API_KEY 已配置' : 'GROQ_API_KEY 未配置',
+        groq_api_key_configured: hasApiKey,
+        api_key_prefix: apiKeyPrefix,
+        model: 'llama-3.3-70b-versatile',
+        timestamp: new Date().toISOString()
+    });
+});
+
 module.exports = router;
