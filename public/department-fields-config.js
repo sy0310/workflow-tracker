@@ -49,27 +49,56 @@ const DEPARTMENT_FIELDS = {
 // 生成表单HTML的辅助函数
 function generateFieldHTML(fieldConfig, value = '', prefix = '') {
     const fieldId = prefix + fieldConfig.id;
-    const fieldValue = value || '';
+    let fieldValue = value || '';
+    
+    // 转义HTML特殊字符以防止XSS
+    const escapeHtml = (str) => {
+        if (!str) return '';
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    };
+    
+    // 如果是日期时间类型，需要格式化为 datetime-local 格式
+    if (fieldConfig.type === 'datetime-local' && fieldValue) {
+        try {
+            const date = new Date(fieldValue);
+            if (!isNaN(date.getTime())) {
+                const year = date.getFullYear();
+                const month = String(date.getMonth() + 1).padStart(2, '0');
+                const day = String(date.getDate()).padStart(2, '0');
+                const hours = String(date.getHours()).padStart(2, '0');
+                const minutes = String(date.getMinutes()).padStart(2, '0');
+                fieldValue = `${year}-${month}-${day}T${hours}:${minutes}`;
+            }
+        } catch (e) {
+            console.error('日期格式化错误:', e);
+            fieldValue = '';
+        }
+    }
     
     if (fieldConfig.type === 'textarea') {
         return `
             <div class="mb-3">
                 <label for="${fieldId}" class="form-label">${fieldConfig.label}</label>
-                <textarea class="form-control" id="${fieldId}" rows="3">${fieldValue}</textarea>
+                <textarea class="form-control" id="${fieldId}" rows="3">${escapeHtml(fieldValue)}</textarea>
             </div>
         `;
     } else if (fieldConfig.type === 'datetime-local') {
         return `
             <div class="mb-3">
                 <label for="${fieldId}" class="form-label">${fieldConfig.label}</label>
-                <input type="datetime-local" class="form-control" id="${fieldId}" value="${fieldValue}">
+                <input type="datetime-local" class="form-control" id="${fieldId}" value="${escapeHtml(fieldValue)}">
             </div>
         `;
     } else {
         return `
             <div class="mb-3">
                 <label for="${fieldId}" class="form-label">${fieldConfig.label}</label>
-                <input type="text" class="form-control" id="${fieldId}" value="${fieldValue}">
+                <input type="text" class="form-control" id="${fieldId}" value="${escapeHtml(fieldValue)}">
             </div>
         `;
     }
