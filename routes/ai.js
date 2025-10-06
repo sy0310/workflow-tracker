@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const authenticateToken = require('../middleware/authenticateToken');
+require('dotenv').config();
 
 // Groq API 配置
 const GROQ_API_KEY = process.env.GROQ_API_KEY;
@@ -14,30 +15,41 @@ const conversations = new Map();
  */
 async function callGroqAPI(messages, temperature = 0.7) {
     if (!GROQ_API_KEY) {
-        throw new Error('GROQ_API_KEY 未配置');
+        console.error('❌ GROQ_API_KEY 未配置');
+        throw new Error('GROQ_API_KEY 未配置，请在 Vercel 环境变量中添加');
     }
 
-    const response = await fetch(GROQ_API_URL, {
-        method: 'POST',
-        headers: {
-            'Authorization': `Bearer ${GROQ_API_KEY}`,
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-            model: 'llama-3.1-70b-versatile', // 使用 Llama 3.1 70B 模型（最智能）
-            messages: messages,
-            temperature: temperature,
-            max_tokens: 1000
-        })
-    });
+    console.log('🤖 调用 Groq API...');
+    console.log('API Key 前缀:', GROQ_API_KEY.substring(0, 10) + '...');
 
-    if (!response.ok) {
-        const error = await response.text();
-        throw new Error(`Groq API 错误: ${error}`);
+    try {
+        const response = await fetch(GROQ_API_URL, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${GROQ_API_KEY}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                model: 'llama-3.1-70b-versatile', // 使用 Llama 3.1 70B 模型（最智能）
+                messages: messages,
+                temperature: temperature,
+                max_tokens: 1000
+            })
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('Groq API 错误响应:', errorText);
+            throw new Error(`Groq API 错误 (${response.status}): ${errorText}`);
+        }
+
+        const data = await response.json();
+        console.log('✅ Groq API 调用成功');
+        return data.choices[0].message.content;
+    } catch (error) {
+        console.error('Groq API 调用失败:', error);
+        throw error;
     }
-
-    const data = await response.json();
-    return data.choices[0].message.content;
 }
 
 /**
