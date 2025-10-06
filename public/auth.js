@@ -103,19 +103,21 @@ class AuthManager {
             const data = await response.json();
 
             if (response.ok) {
-                // 保存认证信息
-                this.token = data.token;
-                this.user = data.user;
-                localStorage.setItem('auth_token', this.token);
-                localStorage.setItem('user_info', JSON.stringify(this.user));
-
                 // 关闭注册模态框
-                bootstrap.Modal.getInstance(document.getElementById('registerModal')).hide();
+                const registerModal = bootstrap.Modal.getInstance(document.getElementById('registerModal'));
+                if (registerModal) {
+                    registerModal.hide();
+                }
 
-                this.showSuccess('注册成功，正在跳转...');
+                // 显示成功消息
+                this.showSuccess(data.message || '注册成功！请登录。');
+                
+                // 自动填充登录表单
                 setTimeout(() => {
-                    this.redirectToMain();
-                }, 1000);
+                    document.getElementById('loginUsername').value = username;
+                    // 不自动填充密码，让用户手动输入更安全
+                    document.getElementById('loginUsername').focus();
+                }, 500);
             } else {
                 this.showError(data.error || '注册失败');
             }

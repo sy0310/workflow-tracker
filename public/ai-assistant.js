@@ -87,6 +87,11 @@ class AIAssistant {
 
         try {
             const token = localStorage.getItem('token');
+            
+            if (!token) {
+                throw new Error('未登录，请先登录');
+            }
+            
             const response = await fetch('/api/ai/chat', {
                 method: 'POST',
                 headers: {
@@ -100,10 +105,13 @@ class AIAssistant {
             });
 
             if (!response.ok) {
-                throw new Error('AI 响应失败');
+                const errorText = await response.text();
+                console.error('AI API 错误响应:', errorText);
+                throw new Error(`AI 响应失败 (${response.status}): ${errorText}`);
             }
 
             const data = await response.json();
+            console.log('✅ AI 响应成功:', data);
             
             // 保存对话 ID
             if (!this.conversationId) {
@@ -348,11 +356,12 @@ class AIAssistant {
 // 全局实例
 let aiAssistant;
 
-// 页面加载时初始化
+// 页面加载时初始化（确保只初始化一次）
 document.addEventListener('DOMContentLoaded', () => {
-    // 只在有 AI 聊天界面的页面初始化
-    if (document.getElementById('aiChatMessages')) {
+    // 只在有 AI 聊天界面的页面初始化，且确保只初始化一次
+    if (document.getElementById('aiChatMessages') && !aiAssistant) {
         aiAssistant = new AIAssistant();
         aiAssistant.init();
+        console.log('✅ AI 助手已初始化');
     }
 });

@@ -40,21 +40,14 @@ router.post('/register', async (req, res) => {
       [username, email, passwordHash]
     );
 
-    // 生成JWT token
-    const token = jwt.sign(
-      { userId: result.id, username, email },
-      process.env.JWT_SECRET || 'your-secret-key',
-      { expiresIn: '7d' }
-    );
-
+    // 注册成功，但需要邮箱验证
     res.status(201).json({
-      message: '注册成功',
-      token,
+      message: '注册成功！请使用您的账号登录。',
+      requireLogin: true,
       user: {
         id: result.id,
         username,
-        email,
-        role: 'user'
+        email
       }
     });
   } catch (error) {
