@@ -30,7 +30,7 @@ async function callGroqAPI(messages, temperature = 0.7) {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                model: 'llama-3.1-70b-versatile', // 使用 Llama 3.1 70B 模型（最智能）
+                model: 'llama-3.3-70b-versatile', // 使用 Llama 3.3 70B 模型（最新最智能）
                 messages: messages,
                 temperature: temperature,
                 max_tokens: 1000

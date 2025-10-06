@@ -36,7 +36,7 @@ async function testGroqAPI() {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                model: 'llama-3.1-70b-versatile',
+                model: 'llama-3.3-70b-versatile', // 最新的 Llama 模型
                 messages: [
                     {
                         role: 'user',
