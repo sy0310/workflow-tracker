@@ -417,116 +417,17 @@ async function editProject(departmentName, projectId) {
     }
 }
 
-// 更新编辑表单的部门特有字段
+// 更新编辑表单的部门特有字段（使用配置文件）
 function updateEditDepartmentSpecificFields(department, project) {
     const container = document.getElementById('edit-department-specific-fields');
-    let html = '<hr><h6 class="mb-3">部门特有信息</h6>';
     
-    switch (department) {
-        case '产业分析':
-            html += `
-                <div class="row">
-                    <div class="col-md-6">
-                        <div class="mb-3">
-                            <label for="edit-analysis-type" class="form-label">分析类型</label>
-                            <input type="text" class="form-control" id="edit-analysis-type" value="${project.分析类型 || ''}">
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="mb-3">
-                            <label for="edit-target-industry" class="form-label">目标行业</label>
-                            <input type="text" class="form-control" id="edit-target-industry" value="${project.目标行业 || ''}">
-                        </div>
-                    </div>
-                </div>
-                <div class="mb-3">
-                    <label for="edit-analysis-scope" class="form-label">分析范围</label>
-                    <textarea class="form-control" id="edit-analysis-scope" rows="2">${project.分析范围 || ''}</textarea>
-                </div>
-                <div class="mb-3">
-                    <label for="edit-data-sources" class="form-label">数据来源</label>
-                    <textarea class="form-control" id="edit-data-sources" rows="2">${project.数据来源 || ''}</textarea>
-                </div>
-            `;
-            break;
-        case '创意实践':
-            html += `
-                <div class="row">
-                    <div class="col-md-6">
-                        <div class="mb-3">
-                            <label for="edit-creative-type" class="form-label">创意类型</label>
-                            <input type="text" class="form-control" id="edit-creative-type" value="${project.创意类型 || ''}">
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="mb-3">
-                            <label for="edit-target-users" class="form-label">目标用户</label>
-                            <input type="text" class="form-control" id="edit-target-users" value="${project.目标用户 || ''}">
-                        </div>
-                    </div>
-                </div>
-                <div class="mb-3">
-                    <label for="edit-creative-concept" class="form-label">创意概念</label>
-                    <textarea class="form-control" id="edit-creative-concept" rows="2">${project.创意概念 || ''}</textarea>
-                </div>
-            `;
-            break;
-        case '活动策划':
-            html += `
-                <div class="row">
-                    <div class="col-md-6">
-                        <div class="mb-3">
-                            <label for="edit-event-type" class="form-label">活动类型</label>
-                            <input type="text" class="form-control" id="edit-event-type" value="${project.活动类型 || ''}">
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="mb-3">
-                            <label for="edit-target-audience" class="form-label">目标受众</label>
-                            <input type="text" class="form-control" id="edit-target-audience" value="${project.目标受众 || ''}">
-                        </div>
-                    </div>
-                </div>
-                <div class="row">
-                    <div class="col-md-6">
-                        <div class="mb-3">
-                            <label for="edit-event-scale" class="form-label">活动规模</label>
-                            <input type="text" class="form-control" id="edit-event-scale" value="${project.活动规模 || ''}">
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="mb-3">
-                            <label for="edit-event-location" class="form-label">活动地点</label>
-                            <input type="text" class="form-control" id="edit-event-location" value="${project.活动地点 || ''}">
-                        </div>
-                    </div>
-                </div>
-            `;
-            break;
-        case '资源拓展':
-            html += `
-                <div class="row">
-                    <div class="col-md-6">
-                        <div class="mb-3">
-                            <label for="edit-resource-type" class="form-label">资源类型</label>
-                            <input type="text" class="form-control" id="edit-resource-type" value="${project.资源类型 || ''}">
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="mb-3">
-                            <label for="edit-target-object" class="form-label">目标对象</label>
-                            <input type="text" class="form-control" id="edit-target-object" value="${project.目标对象 || ''}">
-                        </div>
-                    </div>
-                </div>
-                <div class="mb-3">
-                    <label for="edit-expansion-method" class="form-label">拓展方式</label>
-                    <textarea class="form-control" id="edit-expansion-method" rows="2">${project.拓展方式 || ''}</textarea>
-                </div>
-            `;
-            break;
+    if (!department || !DEPARTMENT_FIELDS[department]) {
+        container.innerHTML = '';
+        return;
     }
     
+    let html = '<hr><h6 class="mb-3">部门特有信息</h6>';
+    html += generateTwoColumnFieldsHTML(DEPARTMENT_FIELDS[department], project, 'edit-');
     container.innerHTML = html;
 }
 
@@ -552,31 +453,9 @@ async function updateProject() {
             预计完成时间: document.getElementById('edit-project-end-time').value
         };
         
-        // 添加部门特有字段
-        switch (department) {
-            case '产业分析':
-                projectData.分析类型 = document.getElementById('edit-analysis-type')?.value || '';
-                projectData.目标行业 = document.getElementById('edit-target-industry')?.value || '';
-                projectData.分析范围 = document.getElementById('edit-analysis-scope')?.value || '';
-                projectData.数据来源 = document.getElementById('edit-data-sources')?.value || '';
-                break;
-            case '创意实践':
-                projectData.创意类型 = document.getElementById('edit-creative-type')?.value || '';
-                projectData.目标用户 = document.getElementById('edit-target-users')?.value || '';
-                projectData.创意概念 = document.getElementById('edit-creative-concept')?.value || '';
-                break;
-            case '活动策划':
-                projectData.活动类型 = document.getElementById('edit-event-type')?.value || '';
-                projectData.目标受众 = document.getElementById('edit-target-audience')?.value || '';
-                projectData.活动规模 = document.getElementById('edit-event-scale')?.value || '';
-                projectData.活动地点 = document.getElementById('edit-event-location')?.value || '';
-                break;
-            case '资源拓展':
-                projectData.资源类型 = document.getElementById('edit-resource-type')?.value || '';
-                projectData.目标对象 = document.getElementById('edit-target-object')?.value || '';
-                projectData.拓展方式 = document.getElementById('edit-expansion-method')?.value || '';
-                break;
-        }
+        // 添加部门特有字段（使用配置文件）
+        const departmentFields = collectFieldData(department, 'edit-');
+        Object.assign(projectData, departmentFields);
         
         const response = await fetch(`/api/departments/${encodeURIComponent(department)}/projects/${projectId}`, {
             method: 'PUT',
