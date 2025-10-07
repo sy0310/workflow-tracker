@@ -192,8 +192,14 @@ router.post('/create-task', authenticateToken, async (req, res) => {
     try {
         const { taskData } = req.body;
         const db = require('../database-postgres');
+        
+        console.log('📝 创建任务请求:', {
+            userId: req.user.userId,
+            taskData: taskData
+        });
 
         if (!taskData || !taskData.任务名称) {
+            console.error('❌ 任务数据不完整:', taskData);
             return res.status(400).json({ error: '任务数据不完整' });
         }
 
@@ -220,22 +226,31 @@ router.post('/create-task', authenticateToken, async (req, res) => {
         } else {
             // 创建通用任务
             const sql = `
-                INSERT INTO tasks (title, description, assigned_to, priority, status, start_date, due_date, created_by)
+                INSERT INTO tasks (title, description, assignee_id, priority, status, start_time, estimated_completion_time, created_by)
                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
                 RETURNING *
             `;
+            
+            // 将中文优先级转换为数字
+            const priorityMap = { '低': 1, '中': 2, '高': 3, '紧急': 4 };
+            const statusMap = { '待开始': 1, '进行中': 2, '已完成': 3, '已取消': 4 };
+            
             const values = [
                 taskData.任务名称,
                 taskData.任务描述 || '',
-                taskData.负责人,
-                taskData.优先级 || '中',
-                taskData.状态 || '待开始',
-                taskData.开始时间 || new Date(),
+                taskData.负责人, // 这里应该是 staff ID，但暂时用名称
+                priorityMap[taskData.优先级] || 2,
+                statusMap[taskData.状态] || 1,
+                taskData.开始时间 || new Date().toISOString(),
                 taskData.预计完成时间,
                 req.user.userId
             ];
 
+            console.log('📝 执行通用任务 SQL:', sql);
+            console.log('📝 参数值:', values);
+            
             const result = await db.query(sql, values);
+            console.log('✅ 通用任务创建成功:', result.rows[0]);
 
             res.json({ 
                 success: true, 
@@ -245,8 +260,13 @@ router.post('/create-task', authenticateToken, async (req, res) => {
         }
 
     } catch (error) {
-        console.error('创建任务错误:', error);
-        res.status(500).json({ error: '创建任务失败', details: error.message });
+        console.error('❌ 创建任务错误:', error);
+        console.error('❌ 错误堆栈:', error.stack);
+        res.status(500).json({ 
+            error: '创建任务失败', 
+            details: error.message,
+            stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+        });
     }
 });
 

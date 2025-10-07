@@ -275,7 +275,14 @@ class AIAssistant {
      */
     async createTask(taskData) {
         try {
-            const token = localStorage.getItem('token');
+            // 尝试从两个可能的位置获取 token
+            const token = localStorage.getItem('token') || localStorage.getItem('auth_token');
+            
+            if (!token) {
+                this.addMessage('请先登录后再创建任务。', 'ai', true);
+                throw new Error('未登录，请先登录');
+            }
+            
             const response = await fetch('/api/ai/create-task', {
                 method: 'POST',
                 headers: {
@@ -286,10 +293,13 @@ class AIAssistant {
             });
 
             if (!response.ok) {
-                throw new Error('创建任务失败');
+                const errorData = await response.json().catch(() => ({}));
+                console.error('❌ 创建任务失败:', response.status, errorData);
+                throw new Error(errorData.error || `创建任务失败 (${response.status})`);
             }
 
             const result = await response.json();
+            console.log('✅ 任务创建成功:', result);
 
             // 显示成功消息
             this.addMessage(`✅ 太好了！任务已成功创建！
