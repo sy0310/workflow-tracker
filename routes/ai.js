@@ -259,6 +259,14 @@ router.post('/create-task', authenticateToken, async (req, res) => {
             
             const sql = `INSERT INTO "${department}" (${columnNames}) VALUES (${placeholders}) RETURNING *`;
             const result = await db.query(sql, values);
+            
+            console.log('📝 数据库查询结果:', result);
+            console.log('📝 result.rows:', result.rows);
+            console.log('📝 result.rows.length:', result.rows ? result.rows.length : 'undefined');
+
+            if (!result || !result.rows || result.rows.length === 0) {
+                throw new Error('任务创建失败：数据库返回空结果');
+            }
 
             res.json({ 
                 success: true, 
