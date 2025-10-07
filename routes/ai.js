@@ -209,11 +209,48 @@ router.post('/create-task', authenticateToken, async (req, res) => {
 
         if (department && ['产业分析', '创意实践', '活动策划', '资源拓展'].includes(department)) {
             // 创建部门任务
-            const columns = Object.keys(taskData);
-            const values = Object.values(taskData);
+            // 字段名映射：AI 字段名 -> 数据库字段名
+            const fieldMapping = {
+                '任务名称': '项目名称',
+                '任务描述': '项目描述',
+                '负责人': '负责人',
+                '优先级': '优先级',
+                '状态': '状态',
+                '开始时间': '开始时间',
+                '预计完成时间': '预计完成时间'
+            };
+            
+            // 转换字段名和数据类型
+            const priorityMap = { '低': 1, '中': 2, '高': 3, '紧急': 4 };
+            const statusMap = { '待开始': 1, '进行中': 2, '已完成': 3, '已取消': 4 };
+            
+            const mappedData = {};
+            for (const [aiField, value] of Object.entries(taskData)) {
+                const dbField = fieldMapping[aiField] || aiField;
+                let processedValue = value;
+                
+                // 处理优先级和状态的数据类型转换
+                if (aiField === '优先级' && priorityMap[value]) {
+                    processedValue = priorityMap[value];
+                } else if (aiField === '状态' && statusMap[value]) {
+                    processedValue = statusMap[value];
+                }
+                
+                mappedData[dbField] = processedValue;
+            }
+            
+            // 添加创建者信息
+            mappedData['创建者'] = req.user.userId;
+            mappedData['创建时间'] = new Date().toISOString();
+            
+            const columns = Object.keys(mappedData);
+            const values = Object.values(mappedData);
             const placeholders = values.map((_, i) => `$${i + 1}`).join(', ');
             const columnNames = columns.map(col => `"${col}"`).join(', ');
 
+            console.log('📝 执行部门任务 SQL:', `INSERT INTO "${department}" (${columnNames}) VALUES (${placeholders})`);
+            console.log('📝 参数值:', values);
+            
             const sql = `INSERT INTO "${department}" (${columnNames}) VALUES (${placeholders}) RETURNING *`;
             const result = await db.query(sql, values);
 
