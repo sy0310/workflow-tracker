@@ -343,10 +343,8 @@ async function deleteProject(departmentName, projectId, projectName) {
         
         if (response.ok) {
             showAlert('项目删除成功', 'success');
-            // 延迟刷新页面，让用户看到成功提示
-            setTimeout(() => {
-                window.location.reload();
-            }, 1000);
+            // 刷新部门项目列表
+            await loadDepartmentProjects(departmentName);
         } else {
             const error = await response.json();
             showAlert(error.error || '删除项目失败', 'danger');
@@ -1025,10 +1023,8 @@ async function deleteTask(taskId) {
         
         if (response.ok) {
             showAlert('任务删除成功', 'success');
-            // 延迟刷新页面，让用户看到成功提示
-            setTimeout(() => {
-                window.location.reload();
-            }, 1000);
+            // 刷新任务列表
+            await loadTasks();
         } else {
             const error = await response.json();
             showAlert(error.error || '删除任务失败', 'danger');
@@ -1140,10 +1136,8 @@ async function deleteStaff(staffId) {
         
         if (deleteResponse.ok) {
             showAlert('员工删除成功', 'success');
-            // 延迟刷新页面，让用户看到成功提示
-            setTimeout(() => {
-                window.location.reload();
-            }, 1000);
+            // 刷新员工列表
+            await loadStaff();
         } else {
             const error = await deleteResponse.json();
             showAlert(error.error || '删除员工失败', 'danger');
