@@ -50,10 +50,11 @@ class AuthManager {
             const data = await response.json();
 
             if (response.ok) {
-                // 保存认证信息
+                // 保存认证信息（兼容多个存储位置）
                 this.token = data.token;
                 this.user = data.user;
                 localStorage.setItem('auth_token', this.token);
+                localStorage.setItem('token', this.token); // 兼容 AI 助手
                 localStorage.setItem('user_info', JSON.stringify(this.user));
 
                 this.showSuccess('登录成功，正在跳转...');

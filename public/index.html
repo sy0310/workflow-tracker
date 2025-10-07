@@ -792,21 +792,23 @@
             const icon = document.querySelector('.ai-toggle-icon');
             
             if (!body || !icon) {
-                console.error('AI 聊天窗口元素未找到');
+                console.error('❌ AI 聊天窗口元素未找到');
                 return;
             }
             
             aiChatOpen = !aiChatOpen;
             
             if (aiChatOpen) {
-                // 展开
-                body.style.display = 'flex';
+                // 展开：添加 show 类
+                body.classList.add('show');
+                body.style.display = 'flex'; // 兼容性
                 icon.classList.remove('bi-chevron-down');
                 icon.classList.add('bi-chevron-up');
                 console.log('✅ AI 聊天窗口已展开');
             } else {
-                // 收起
-                body.style.display = 'none';
+                // 收起：移除 show 类
+                body.classList.remove('show');
+                body.style.display = 'none'; // 兼容性
                 icon.classList.remove('bi-chevron-up');
                 icon.classList.add('bi-chevron-down');
                 console.log('✅ AI 聊天窗口已收起');
@@ -816,9 +818,19 @@
         // 初始化：默认收起
         document.addEventListener('DOMContentLoaded', () => {
             const body = document.getElementById('aiChatBody');
+            const icon = document.querySelector('.ai-toggle-icon');
+            
             if (body) {
+                // 确保初始状态是收起的
+                body.classList.remove('show');
                 body.style.display = 'none';
                 aiChatOpen = false;
+                
+                if (icon) {
+                    icon.classList.remove('bi-chevron-up');
+                    icon.classList.add('bi-chevron-down');
+                }
+                
                 console.log('✅ AI 聊天窗口已初始化（收起状态）');
             }
         });

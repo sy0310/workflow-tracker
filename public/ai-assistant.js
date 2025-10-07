@@ -86,9 +86,12 @@ class AIAssistant {
         this.showTypingIndicator();
 
         try {
-            const token = localStorage.getItem('token');
+            // 尝试从两个可能的位置获取 token
+            const token = localStorage.getItem('token') || localStorage.getItem('auth_token');
             
             if (!token) {
+                this.removeTypingIndicator();
+                this.addMessage('请先登录后再使用 AI 助手。', 'ai', true);
                 throw new Error('未登录，请先登录');
             }
             

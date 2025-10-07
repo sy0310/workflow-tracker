@@ -89,10 +89,14 @@ body {
 }
 
 .ai-chat-body {
-    display: flex;
+    display: none; /* 默认隐藏 */
     flex-direction: column;
     flex: 1;
     overflow: hidden;
+}
+
+.ai-chat-body.show {
+    display: flex;
 }
 
 .ai-chat-messages {
