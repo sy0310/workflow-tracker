@@ -343,8 +343,13 @@ async function deleteProject(departmentName, projectId, projectName) {
         
         if (response.ok) {
             showAlert('项目删除成功', 'success');
-            // 刷新部门项目列表
-            await loadDepartmentProjects(departmentName);
+            // 刷新所有相关数据
+            await Promise.all([
+                loadDepartmentProjects(departmentName),  // 刷新部门项目列表
+                loadTasks(),                             // 刷新任务列表
+                loadTaskStats(),                         // 刷新任务统计
+                loadUpcomingDeadlines()                  // 刷新即将到期任务
+            ]);
         } else {
             const error = await response.json();
             showAlert(error.error || '删除项目失败', 'danger');
@@ -463,9 +468,13 @@ async function updateProject() {
             bootstrap.Modal.getInstance(document.getElementById('editProjectModal')).hide();
             document.getElementById('editProjectForm').reset();
             
-            // 刷新项目列表
+            // 刷新所有相关数据
             if (currentDepartment === department) {
-                await loadDepartmentProjects(department);
+                await Promise.all([
+                    loadDepartmentProjects(department),  // 刷新部门项目列表
+                    loadTasks(),                         // 刷新任务列表
+                    loadTaskStats()                      // 刷新任务统计
+                ]);
             }
         } else {
             const error = await response.json();
@@ -1023,8 +1032,12 @@ async function deleteTask(taskId) {
         
         if (response.ok) {
             showAlert('任务删除成功', 'success');
-            // 刷新任务列表
-            await loadTasks();
+            // 刷新所有相关数据
+            await Promise.all([
+                loadTasks(),                             // 刷新任务列表
+                loadTaskStats(),                         // 刷新任务统计
+                loadUpcomingDeadlines()                  // 刷新即将到期任务
+            ]);
         } else {
             const error = await response.json();
             showAlert(error.error || '删除任务失败', 'danger');
@@ -1099,7 +1112,13 @@ async function updateStaff() {
             showAlert('员工信息更新成功', 'success');
             bootstrap.Modal.getInstance(document.getElementById('editStaffModal')).hide();
             document.getElementById('editStaffForm').reset();
-            await loadStaff();
+            // 刷新所有相关数据
+            await Promise.all([
+                loadStaff(),                             // 刷新员工列表
+                loadStaffSelectors(),                    // 刷新员工选择器
+                loadTasks(),                             // 刷新任务列表（可能包含该员工的任务）
+                loadTaskStats()                          // 刷新任务统计
+            ]);
         } else {
             const error = await response.json();
             showAlert(error.error || '更新员工信息失败', 'danger');
@@ -1136,8 +1155,13 @@ async function deleteStaff(staffId) {
         
         if (deleteResponse.ok) {
             showAlert('员工删除成功', 'success');
-            // 刷新员工列表
-            await loadStaff();
+            // 刷新所有相关数据
+            await Promise.all([
+                loadStaff(),                             // 刷新员工列表
+                loadStaffSelectors(),                    // 刷新员工选择器
+                loadTasks(),                             // 刷新任务列表（可能包含该员工的任务）
+                loadTaskStats()                          // 刷新任务统计
+            ]);
         } else {
             const error = await deleteResponse.json();
             showAlert(error.error || '删除员工失败', 'danger');
