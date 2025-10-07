@@ -263,18 +263,19 @@ router.post('/create-task', authenticateToken, async (req, res) => {
                 const result = await db.query(sql, values);
                 
                 console.log('📝 数据库查询结果:', result);
-                console.log('📝 result.rows:', result.rows);
-                console.log('📝 result.rows.length:', result.rows ? result.rows.length : 'undefined');
+                console.log('📝 result 类型:', typeof result);
+                console.log('📝 result 是否为数组:', Array.isArray(result));
+                console.log('📝 result.length:', result ? result.length : 'undefined');
 
-                if (!result || !result.rows || result.rows.length === 0) {
+                if (!result || !Array.isArray(result) || result.length === 0) {
                     throw new Error('任务创建失败：数据库返回空结果');
                 }
                 
-                console.log('✅ 部门任务创建成功:', result.rows[0]);
+                console.log('✅ 部门任务创建成功:', result[0]);
                 
                 res.json({ 
                     success: true, 
-                    task: result.rows[0],
+                    task: result[0],
                     type: 'department',
                     department: department
                 });
