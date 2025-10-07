@@ -727,10 +727,11 @@
         
         // 切换 AI 聊天窗口
         function toggleAIChat() {
+            const widget = document.getElementById('aiChatWidget');
             const body = document.getElementById('aiChatBody');
             const icon = document.querySelector('.ai-toggle-icon');
             
-            if (!body || !icon) {
+            if (!widget || !body || !icon) {
                 console.error('❌ AI 聊天窗口元素未找到');
                 return;
             }
@@ -738,29 +739,33 @@
             aiChatOpen = !aiChatOpen;
             
             if (aiChatOpen) {
-                // 展开：添加 show 类
+                // 展开：显示窗口内容
+                widget.classList.add('expanded');
                 body.classList.add('show');
-                body.style.display = 'flex'; // 兼容性
+                body.style.display = 'flex';
                 icon.classList.remove('bi-chevron-down');
                 icon.classList.add('bi-chevron-up');
                 console.log('✅ AI 聊天窗口已展开');
             } else {
-                // 收起：移除 show 类
+                // 收起：只显示标题栏
+                widget.classList.remove('expanded');
                 body.classList.remove('show');
-                body.style.display = 'none'; // 兼容性
+                body.style.display = 'none';
                 icon.classList.remove('bi-chevron-up');
                 icon.classList.add('bi-chevron-down');
                 console.log('✅ AI 聊天窗口已收起');
             }
         }
         
-        // 初始化：默认收起
+        // 初始化：默认完全收起（只显示标题栏）
         document.addEventListener('DOMContentLoaded', () => {
+            const widget = document.getElementById('aiChatWidget');
             const body = document.getElementById('aiChatBody');
             const icon = document.querySelector('.ai-toggle-icon');
             
-            if (body) {
-                // 确保初始状态是收起的
+            if (widget && body) {
+                // 确保初始状态：只显示标题栏
+                widget.classList.remove('expanded');
                 body.classList.remove('show');
                 body.style.display = 'none';
                 aiChatOpen = false;
@@ -770,7 +775,7 @@
                     icon.classList.add('bi-chevron-down');
                 }
                 
-                console.log('✅ AI 聊天窗口已初始化（收起状态）');
+                console.log('✅ AI 聊天窗口已初始化（只显示标题栏）');
             }
         });
     </script>

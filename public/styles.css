@@ -52,7 +52,7 @@ body {
     right: 30px;
     width: 400px;
     max-width: calc(100vw - 60px);
-    height: 600px;
+    height: auto; /* 改为 auto，根据内容调整 */
     max-height: calc(100vh - 150px);
     background: white;
     border-radius: 15px;
@@ -61,6 +61,12 @@ body {
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    transition: height 0.3s ease; /* 添加过渡动画 */
+}
+
+/* 当聊天窗口展开时 */
+.ai-chat-widget.expanded {
+    height: 600px;
 }
 
 .ai-chat-header {
