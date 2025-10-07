@@ -258,22 +258,31 @@ router.post('/create-task', authenticateToken, async (req, res) => {
             console.log('📝 参数值:', values);
             
             const sql = `INSERT INTO "${department}" (${columnNames}) VALUES (${placeholders}) RETURNING *`;
-            const result = await db.query(sql, values);
             
-            console.log('📝 数据库查询结果:', result);
-            console.log('📝 result.rows:', result.rows);
-            console.log('📝 result.rows.length:', result.rows ? result.rows.length : 'undefined');
+            try {
+                const result = await db.query(sql, values);
+                
+                console.log('📝 数据库查询结果:', result);
+                console.log('📝 result.rows:', result.rows);
+                console.log('📝 result.rows.length:', result.rows ? result.rows.length : 'undefined');
 
-            if (!result || !result.rows || result.rows.length === 0) {
-                throw new Error('任务创建失败：数据库返回空结果');
+                if (!result || !result.rows || result.rows.length === 0) {
+                    throw new Error('任务创建失败：数据库返回空结果');
+                }
+                
+                console.log('✅ 部门任务创建成功:', result.rows[0]);
+                
+                res.json({ 
+                    success: true, 
+                    task: result.rows[0],
+                    type: 'department',
+                    department: department
+                });
+                
+            } catch (dbError) {
+                console.error('❌ 数据库查询错误:', dbError);
+                throw new Error(`数据库操作失败: ${dbError.message}`);
             }
-
-            res.json({ 
-                success: true, 
-                task: result.rows[0],
-                type: 'department',
-                department: department
-            });
         } else {
             // 创建通用任务
             const sql = `
