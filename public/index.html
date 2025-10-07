@@ -35,11 +35,6 @@
                             <i class="fas fa-bell me-1"></i>提醒管理
                         </a>
                     </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="#" onclick="showSection('ai-assistant')">
-                            <i class="fas fa-robot me-1"></i>AI助手
-                        </a>
-                    </li>
                 </ul>
             </div>
         </div>
@@ -296,62 +291,6 @@
             </div>
         </div>
 
-        <!-- AI助手 -->
-        <div id="ai-assistant-section" class="section" style="display: none;">
-            <div class="row">
-                <div class="col-12">
-                    <h2 class="mb-4"><i class="fas fa-robot me-2"></i>AI助手</h2>
-                </div>
-            </div>
-
-            <div class="row">
-                <div class="col-md-8">
-                    <div class="card">
-                        <div class="card-header">
-                            <h5 class="mb-0">对话界面</h5>
-                        </div>
-                        <div class="card-body">
-                            <div id="chat-messages" class="chat-messages">
-                                <div class="message ai-message">
-                                    <div class="message-content">
-                                        <i class="fas fa-robot me-2"></i>
-                                        您好！我是您的任务管理助手。请告诉我您想要创建的任务信息。
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="chat-input">
-                                <div class="input-group">
-                                    <input type="text" class="form-control" id="chat-input" placeholder="输入消息...">
-                                    <button class="btn btn-primary" onclick="sendChatMessage()">
-                                        <i class="fas fa-paper-plane"></i>
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="card">
-                        <div class="card-header">
-                            <h5 class="mb-0">快捷操作</h5>
-                        </div>
-                        <div class="card-body">
-                            <div class="d-grid gap-2">
-                                <button class="btn btn-outline-primary" onclick="quickCreateTask()">
-                                    <i class="fas fa-plus me-1"></i>快速创建任务
-                                </button>
-                                <button class="btn btn-outline-secondary" onclick="viewTaskList()">
-                                    <i class="fas fa-list me-1"></i>查看任务列表
-                                </button>
-                                <button class="btn btn-outline-info" onclick="checkDeadlines()">
-                                    <i class="fas fa-clock me-1"></i>检查截止日期
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
     </div>
 
     <!-- 创建任务模态框 -->

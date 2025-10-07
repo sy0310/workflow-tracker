@@ -65,12 +65,7 @@ function setupEventListeners() {
     // 提醒筛选
     document.getElementById('notification-filter').addEventListener('change', loadNotifications);
     
-    // 聊天输入框回车事件
-    document.getElementById('chat-input').addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') {
-            sendChatMessage();
-        }
-    });
+    // 旧的 AI 聊天输入框事件监听已移除（现在使用 ai-assistant.js）
 }
 
 // 显示用户信息
@@ -942,140 +937,7 @@ async function searchStaff() {
     }
 }
 
-// 发送聊天消息
-async function sendChatMessage() {
-    const input = document.getElementById('chat-input');
-    const message = input.value.trim();
-    
-    if (!message) return;
-    
-    // 显示用户消息
-    addChatMessage(message, 'user');
-    input.value = '';
-    
-    try {
-        const response = await fetch('/api/ai/chat', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                message: message,
-                user_id: currentUserId,
-                conversation_id: currentConversationId
-            })
-        });
-        
-        const data = await response.json();
-        
-        if (response.ok) {
-            currentConversationId = data.conversation_id;
-            addChatMessage(data.ai_response, 'ai');
-            
-            // 如果AI建议创建任务，显示创建按钮
-            if (data.can_create_task && data.task_info) {
-                addTaskCreationSuggestion(data.task_info);
-            }
-        } else {
-            addChatMessage('抱歉，我遇到了一些问题，请稍后再试。', 'ai');
-        }
-    } catch (error) {
-        console.error('发送聊天消息失败:', error);
-        addChatMessage('抱歉，我遇到了一些问题，请稍后再试。', 'ai');
-    }
-}
-
-// 添加聊天消息
-function addChatMessage(message, sender) {
-    const chatMessages = document.getElementById('chat-messages');
-    const messageDiv = document.createElement('div');
-    messageDiv.className = `message ${sender}-message`;
-    
-    const icon = sender === 'user' ? 'fas fa-user' : 'fas fa-robot';
-    
-    messageDiv.innerHTML = `
-        <div class="message-content">
-            <i class="${icon} me-2"></i>
-            ${message}
-        </div>
-    `;
-    
-    chatMessages.appendChild(messageDiv);
-    chatMessages.scrollTop = chatMessages.scrollHeight;
-}
-
-// 添加任务创建建议
-function addTaskCreationSuggestion(taskInfo) {
-    const chatMessages = document.getElementById('chat-messages');
-    const suggestionDiv = document.createElement('div');
-    suggestionDiv.className = 'message ai-message';
-    
-    suggestionDiv.innerHTML = `
-        <div class="message-content">
-            <i class="fas fa-lightbulb me-2"></i>
-            我可以为您创建这个任务，请确认信息是否正确。
-            <div class="mt-2">
-                <button class="btn btn-sm btn-success me-2" onclick="createTaskFromAI(${JSON.stringify(taskInfo).replace(/"/g, '&quot;')})">
-                    <i class="fas fa-check me-1"></i>创建任务
-                </button>
-                <button class="btn btn-sm btn-secondary" onclick="modifyTaskInfo()">
-                    <i class="fas fa-edit me-1"></i>修改信息
-                </button>
-            </div>
-        </div>
-    `;
-    
-    chatMessages.appendChild(suggestionDiv);
-    chatMessages.scrollTop = chatMessages.scrollHeight;
-}
-
-// 从AI信息创建任务
-async function createTaskFromAI(taskInfo) {
-    try {
-        const response = await fetch('/api/ai/create-task', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                task_info: taskInfo,
-                user_id: currentUserId,
-                conversation_id: currentConversationId
-            })
-        });
-        
-        if (response.ok) {
-            const data = await response.json();
-            addChatMessage('✅ 任务创建成功！', 'ai');
-            await loadTasks();
-            await loadTaskStats();
-        } else {
-            const error = await response.json();
-            addChatMessage('❌ 创建任务失败：' + error.error, 'ai');
-        }
-    } catch (error) {
-        console.error('从AI创建任务失败:', error);
-        addChatMessage('❌ 创建任务失败，请稍后再试。', 'ai');
-    }
-}
-
-// 快捷操作
-function quickCreateTask() {
-    addChatMessage('请描述您要创建的任务，例如："创建一个网站开发任务，负责人是张三，参与人有李四和王五，优先级高，明天开始，一周后完成"', 'ai');
-}
-
-function viewTaskList() {
-    showSection('tasks');
-    addChatMessage('已为您切换到任务管理页面，您可以查看所有任务。', 'ai');
-}
-
-function checkDeadlines() {
-    addChatMessage('正在检查任务截止日期...', 'ai');
-    // 这里可以调用检查截止日期的API
-    setTimeout(() => {
-        addChatMessage('检查完成！您可以在任务管理页面查看即将到期的任务。', 'ai');
-    }, 1000);
-}
+// 旧的 AI 助手函数已移除，现在使用浮动窗口版本（ai-assistant.js）
 
 // 工具函数
 function getStatusText(status) {
