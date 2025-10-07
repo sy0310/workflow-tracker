@@ -347,8 +347,7 @@ async function deleteProject(departmentName, projectId, projectName) {
             await Promise.all([
                 loadDepartmentProjects(departmentName),  // 刷新部门项目列表
                 loadTasks(),                             // 刷新任务列表
-                loadTaskStats(),                         // 刷新任务统计
-                loadUpcomingDeadlines()                  // 刷新即将到期任务
+                loadTaskStats()                          // 刷新任务统计
             ]);
         } else {
             const error = await response.json();
@@ -1035,8 +1034,7 @@ async function deleteTask(taskId) {
             // 刷新所有相关数据
             await Promise.all([
                 loadTasks(),                             // 刷新任务列表
-                loadTaskStats(),                         // 刷新任务统计
-                loadUpcomingDeadlines()                  // 刷新即将到期任务
+                loadTaskStats()                          // 刷新任务统计
             ]);
         } else {
             const error = await response.json();
