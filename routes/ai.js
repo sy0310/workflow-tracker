@@ -229,15 +229,21 @@ router.post('/create-task', authenticateToken, async (req, res) => {
                 const dbField = fieldMapping[aiField] || aiField;
                 let processedValue = value;
                 
+                console.log(`🔄 处理字段: ${aiField} -> ${dbField}, 值: ${value}`);
+                
                 // 处理优先级和状态的数据类型转换
                 if (aiField === '优先级' && priorityMap[value]) {
                     processedValue = priorityMap[value];
+                    console.log(`✅ 优先级转换: ${value} -> ${processedValue}`);
                 } else if (aiField === '状态' && statusMap[value]) {
                     processedValue = statusMap[value];
+                    console.log(`✅ 状态转换: ${value} -> ${processedValue}`);
                 }
                 
                 mappedData[dbField] = processedValue;
             }
+            
+            console.log('📝 映射后的数据:', mappedData);
             
             // 添加创建者信息
             mappedData['创建者'] = req.user.userId;
