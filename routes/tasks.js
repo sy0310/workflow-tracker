@@ -4,10 +4,15 @@ const router = express.Router();
 const usePostgres = process.env.DATABASE_URL;
 const db = usePostgres ? require('../database-postgres') : require('../database');
 const moment = require('moment');
+const authenticateToken = require('../middleware/authenticateToken');
+
+// 应用身份验证中间件到所有任务路由
+router.use(authenticateToken);
 
 // 获取所有任务
 router.get('/', async (req, res) => {
   try {
+    const userId = req.user.id;
     const { status, assignee_id, priority } = req.query;
     let sql = `
       SELECT t.*, 
@@ -16,11 +21,22 @@ router.get('/', async (req, res) => {
       FROM tasks t
       LEFT JOIN staff s1 ON t.assignee_id = s1.id
       LEFT JOIN staff s2 ON t.created_by = s2.id
-      WHERE 1=1
+      WHERE (
+        t.created_by = $1
+        OR t.assignee_id = $1
+        OR EXISTS (
+          SELECT 1 FROM staff s 
+          WHERE s.user_id = $1 
+          AND (
+            t.assignee_id = s.id 
+            OR t.participants::jsonb @> to_jsonb(s.id)
+          )
+        )
+      )
     `;
-    const params = [];
+    const params = [userId];
 
-    let paramCount = 1;
+    let paramCount = 2;
     if (status) {
       sql += ` AND t.status = $${paramCount}`;
       params.push(status);
@@ -70,6 +86,7 @@ router.get('/', async (req, res) => {
 // 获取单个任务
 router.get('/:id', async (req, res) => {
   try {
+    const userId = req.user.id;
     const task = await db.get(`
       SELECT t.*, 
              s1.name as assignee_name, s1.avatar_url as assignee_avatar, s1.wechat_id as assignee_wechat,
@@ -78,10 +95,22 @@ router.get('/:id', async (req, res) => {
       LEFT JOIN staff s1 ON t.assignee_id = s1.id
       LEFT JOIN staff s2 ON t.created_by = s2.id
       WHERE t.id = $1
-    `, [req.params.id]);
+        AND (
+          t.created_by = $2
+          OR t.assignee_id = $2
+          OR EXISTS (
+            SELECT 1 FROM staff s 
+            WHERE s.user_id = $2 
+            AND (
+              t.assignee_id = s.id 
+              OR t.participants::jsonb @> to_jsonb(s.id)
+            )
+          )
+        )
+    `, [req.params.id, userId]);
 
     if (!task) {
-      return res.status(404).json({ error: '任务不存在' });
+      return res.status(404).json({ error: '任务不存在或无权访问' });
     }
 
     // 处理参与人信息
@@ -225,10 +254,20 @@ router.put('/:id', async (req, res) => {
 // 删除任务
 router.delete('/:id', async (req, res) => {
   try {
-    const result = await db.run('DELETE FROM tasks WHERE id = $1', [req.params.id]);
-    if (result.changes === 0) {
+    const userId = req.user.id;
+    
+    // 先检查任务是否存在以及用户是否有权限删除
+    const task = await db.get('SELECT * FROM tasks WHERE id = $1', [req.params.id]);
+    if (!task) {
       return res.status(404).json({ error: '任务不存在' });
     }
+    
+    // 只有创建者可以删除任务
+    if (task.created_by !== userId) {
+      return res.status(403).json({ error: '无权删除此任务' });
+    }
+    
+    const result = await db.run('DELETE FROM tasks WHERE id = $1', [req.params.id]);
     res.json({ message: '任务已删除' });
   } catch (error) {
     console.error('删除任务错误:', error);
@@ -239,6 +278,8 @@ router.delete('/:id', async (req, res) => {
 // 获取任务统计
 router.get('/stats/overview', async (req, res) => {
   try {
+    const userId = req.user.id;
+    
     const stats = await db.query(`
       SELECT 
         COUNT(*) as total_tasks,
@@ -250,8 +291,18 @@ router.get('/stats/overview', async (req, res) => {
         SUM(CASE WHEN priority = 2 THEN 1 ELSE 0 END) as medium_priority,
         SUM(CASE WHEN priority = 3 THEN 1 ELSE 0 END) as high_priority,
         SUM(CASE WHEN priority = 4 THEN 1 ELSE 0 END) as urgent_priority
-      FROM tasks
-    `);
+      FROM tasks t
+      WHERE t.created_by = $1
+         OR t.assignee_id = $1
+         OR EXISTS (
+           SELECT 1 FROM staff s 
+           WHERE s.user_id = $1 
+           AND (
+             t.assignee_id = s.id 
+             OR t.participants::jsonb @> to_jsonb(s.id)
+           )
+         )
+    `, [userId]);
 
     res.json(stats[0]);
   } catch (error) {
@@ -263,6 +314,7 @@ router.get('/stats/overview', async (req, res) => {
 // 获取即将到期的任务
 router.get('/upcoming/deadlines', async (req, res) => {
   try {
+    const userId = req.user.id;
     const { days = 3 } = req.query;
     const upcomingDate = moment().add(days, 'days').format('YYYY-MM-DD HH:mm:ss');
     
@@ -276,8 +328,20 @@ router.get('/upcoming/deadlines', async (req, res) => {
       WHERE t.status IN (1, 2) 
         AND t.estimated_completion_time IS NOT NULL
         AND t.estimated_completion_time <= $1
+        AND (
+          t.created_by = $2
+          OR t.assignee_id = $2
+          OR EXISTS (
+            SELECT 1 FROM staff s 
+            WHERE s.user_id = $2 
+            AND (
+              t.assignee_id = s.id 
+              OR t.participants::jsonb @> to_jsonb(s.id)
+            )
+          )
+        )
       ORDER BY t.estimated_completion_time ASC
-    `, [upcomingDate]);
+    `, [upcomingDate, userId]);
 
     res.json(tasks);
   } catch (error) {
