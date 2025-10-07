@@ -343,8 +343,10 @@ async function deleteProject(departmentName, projectId, projectName) {
         
         if (response.ok) {
             showAlert('项目删除成功', 'success');
-            // 刷新项目列表
-            await loadDepartmentProjects(departmentName);
+            // 延迟刷新页面，让用户看到成功提示
+            setTimeout(() => {
+                window.location.reload();
+            }, 1000);
         } else {
             const error = await response.json();
             showAlert(error.error || '删除项目失败', 'danger');
@@ -647,7 +649,7 @@ function displayTasks(tasks) {
                                     <button class="btn btn-sm btn-outline-primary me-1" onclick="editProject('${task.department}', ${task.id})">
                                         <i class="fas fa-edit"></i>
                                     </button>
-                                    <button class="btn btn-sm btn-outline-danger" onclick="deleteProject('${task.department}', ${task.id})">
+                                    <button class="btn btn-sm btn-outline-danger" onclick="deleteProject('${task.department}', ${task.id}, '${task.title}')">
                                         <i class="fas fa-trash"></i>
                                     </button>
                                 </div>
@@ -1010,9 +1012,30 @@ function editTask(taskId) {
     showAlert('编辑功能开发中...', 'info');
 }
 
-function deleteTask(taskId) {
-    if (confirm('确定要删除这个任务吗？')) {
-        showAlert('删除功能开发中...', 'info');
+async function deleteTask(taskId) {
+    if (!confirm('确定要删除这个任务吗？此操作不可恢复。')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/tasks/${taskId}`, {
+            method: 'DELETE',
+            headers: AuthManager.getAuthHeaders()
+        });
+        
+        if (response.ok) {
+            showAlert('任务删除成功', 'success');
+            // 延迟刷新页面，让用户看到成功提示
+            setTimeout(() => {
+                window.location.reload();
+            }, 1000);
+        } else {
+            const error = await response.json();
+            showAlert(error.error || '删除任务失败', 'danger');
+        }
+    } catch (error) {
+        console.error('删除任务失败:', error);
+        showAlert('删除任务失败', 'danger');
     }
 }
 
@@ -1117,8 +1140,10 @@ async function deleteStaff(staffId) {
         
         if (deleteResponse.ok) {
             showAlert('员工删除成功', 'success');
-            // 刷新员工列表
-            await loadStaff();
+            // 延迟刷新页面，让用户看到成功提示
+            setTimeout(() => {
+                window.location.reload();
+            }, 1000);
         } else {
             const error = await deleteResponse.json();
             showAlert(error.error || '删除员工失败', 'danger');
