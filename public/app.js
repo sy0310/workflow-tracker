@@ -545,25 +545,45 @@ async function loadTaskStats() {
 // 加载任务列表（综合看板：显示所有部门的项目）
 async function loadTasks() {
     try {
+        console.log('📋 开始加载任务列表...');
+        
         const departmentFilter = document.getElementById('department-filter').value;
         const statusFilter = document.getElementById('status-filter').value;
         const priorityFilter = document.getElementById('priority-filter').value;
+        
+        console.log('筛选条件:', { departmentFilter, statusFilter, priorityFilter });
         
         // 四个部门
         const departments = ['产业分析', '创意实践', '活动策划', '资源拓展'];
         
         // 确定要加载哪些部门的项目
         const depsToLoad = departmentFilter ? [departmentFilter] : departments;
+        console.log('要加载的部门:', depsToLoad);
+        
+        // 检查认证状态
+        const token = localStorage.getItem('auth_token');
+        if (!token) {
+            console.error('❌ 未找到认证token');
+            throw new Error('请先登录');
+        }
+        console.log('✅ 认证token存在');
         
         // 并行加载所有部门的项目
-        const promises = depsToLoad.map(dept => 
-            fetch(`/api/departments/${encodeURIComponent(dept)}/projects`, {
+        const promises = depsToLoad.map(dept => {
+            const url = `/api/departments/${encodeURIComponent(dept)}/projects`;
+            console.log(`🔍 请求 ${dept} 项目:`, url);
+            
+            return fetch(url, {
                 headers: AuthManager.getAuthHeaders()
             })
             .then(res => {
+                console.log(`📥 ${dept} 响应状态:`, res.status);
                 if (!res.ok) {
                     console.warn(`${dept}项目加载失败: HTTP ${res.status}`);
-                    return [];
+                    return res.json().then(err => {
+                        console.error(`${dept}错误详情:`, err);
+                        return [];
+                    }).catch(() => []);
                 }
                 return res.json();
             })
@@ -572,6 +592,7 @@ async function loadTasks() {
                     console.warn(`${dept}返回的数据不是数组:`, projects);
                     return [];
                 }
+                console.log(`✅ ${dept} 获取到 ${projects.length} 个项目`);
                 return projects.map(p => ({
                     ...p,
                     department: dept, // 添加部门标识
@@ -587,12 +608,13 @@ async function loadTasks() {
                 }));
             })
             .catch(err => {
-                console.error(`加载${dept}项目失败:`, err);
+                console.error(`❌ 加载${dept}项目失败:`, err);
                 return [];
-            })
-        );
+            });
+        });
         
         const results = await Promise.all(promises);
+        console.log('📊 所有部门加载完成，结果:', results);
         
         // 合并所有项目
         let allTasks = [];
@@ -601,6 +623,8 @@ async function loadTasks() {
                 allTasks = allTasks.concat(result);
             }
         });
+        
+        console.log(`📝 合并后共 ${allTasks.length} 个项目`);
         
         // 应用筛选
         let filteredTasks = allTasks;
@@ -618,6 +642,7 @@ async function loadTasks() {
             return dateB - dateA;
         });
         
+        console.log(`✅ 最终显示 ${filteredTasks.length} 个项目`);
         displayTasks(filteredTasks);
     } catch (error) {
         console.error('加载任务列表失败:', error);
