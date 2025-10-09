@@ -512,46 +512,78 @@ async function loadTaskStats() {
     }
 }
 
-// 加载任务列表（只加载通用任务，不包括部门项目）
+// 加载任务列表（综合看板：显示所有部门的项目）
 async function loadTasks() {
     try {
+        const departmentFilter = document.getElementById('department-filter').value;
         const statusFilter = document.getElementById('status-filter').value;
         const priorityFilter = document.getElementById('priority-filter').value;
         
-        // 只加载通用任务
-        const response = await fetch('/api/tasks', { 
-            headers: AuthManager.getAuthHeaders() 
+        // 四个部门
+        const departments = ['产业分析', '创意实践', '活动策划', '资源拓展'];
+        
+        // 确定要加载哪些部门的项目
+        const depsToLoad = departmentFilter ? [departmentFilter] : departments;
+        
+        // 并行加载所有部门的项目
+        const promises = depsToLoad.map(dept => 
+            fetch(`/api/departments/${encodeURIComponent(dept)}/projects`, {
+                headers: AuthManager.getAuthHeaders()
+            })
+            .then(res => res.json())
+            .then(projects => projects.map(p => ({
+                ...p,
+                department: dept, // 添加部门标识
+                // 统一字段名
+                title: p.项目名称,
+                description: p.项目描述,
+                assignee_name: p.负责人,
+                priority: p.优先级,
+                status: p.状态,
+                created_at: p.创建时间,
+                estimated_completion_time: p.预计完成时间,
+                actual_completion_time: p.实际完成时间
+            })))
+            .catch(err => {
+                console.error(`加载${dept}项目失败:`, err);
+                return [];
+            })
+        );
+        
+        const results = await Promise.all(promises);
+        
+        // 合并所有项目
+        let allTasks = [];
+        results.forEach(result => {
+            if (Array.isArray(result)) {
+                allTasks = allTasks.concat(result);
+            }
         });
         
-        if (!response.ok) {
-            throw new Error('加载任务失败');
-        }
-        
-        let tasks = await response.json();
-        
         // 应用筛选
+        let filteredTasks = allTasks;
         if (statusFilter) {
-            tasks = tasks.filter(t => t.status == statusFilter);
+            filteredTasks = filteredTasks.filter(t => t.status == statusFilter);
         }
         if (priorityFilter) {
-            tasks = tasks.filter(t => t.priority == priorityFilter);
+            filteredTasks = filteredTasks.filter(t => t.priority == priorityFilter);
         }
         
         // 按创建时间降序排序
-        tasks.sort((a, b) => {
+        filteredTasks.sort((a, b) => {
             const dateA = new Date(a.created_at || 0);
             const dateB = new Date(b.created_at || 0);
             return dateB - dateA;
         });
         
-        displayTasks(tasks);
+        displayTasks(filteredTasks);
     } catch (error) {
         console.error('加载任务列表失败:', error);
         showAlert('加载任务列表失败', 'danger');
     }
 }
 
-// 显示任务列表（只显示通用任务）
+// 显示任务列表（综合看板：显示所有部门项目）
 function displayTasks(tasks) {
     const tasksList = document.getElementById('tasks-list');
     
@@ -559,8 +591,8 @@ function displayTasks(tasks) {
         tasksList.innerHTML = `
             <div class="empty-state">
                 <i class="fas fa-tasks"></i>
-                <h5>暂无任务</h5>
-                <p>点击"创建任务"按钮开始创建您的第一个任务</p>
+                <h5>暂无项目</h5>
+                <p>所有部门暂无项目</p>
             </div>
         `;
         return;
@@ -574,7 +606,7 @@ function displayTasks(tasks) {
                         <div class="col-md-8">
                             <h5 class="card-title">
                                 ${task.title}
-                                <span class="badge bg-info ms-2">通用任务</span>
+                                <span class="badge bg-secondary ms-2">${task.department}</span>
                             </h5>
                             <p class="card-text text-muted">${task.description || '无描述'}</p>
                             <div class="d-flex flex-wrap gap-2 mb-2">
@@ -599,19 +631,12 @@ function displayTasks(tasks) {
                         </div>
                         <div class="col-md-4 text-end">
                             <div class="task-actions">
-                                <button class="btn btn-sm btn-outline-primary me-1" onclick="editTask(${task.id})">
-                                    <i class="fas fa-edit"></i>
+                                <button class="btn btn-sm btn-outline-primary me-1" onclick="editProject('${task.department}', ${task.id})">
+                                    <i class="fas fa-edit"></i> 编辑
                                 </button>
-                                <button class="btn btn-sm btn-outline-danger" onclick="deleteTask(${task.id})">
-                                    <i class="fas fa-trash"></i>
+                                <button class="btn btn-sm btn-outline-danger" onclick="deleteProject('${task.department}', ${task.id}, '${task.title}')">
+                                    <i class="fas fa-trash"></i> 删除
                                 </button>
-                            </div>
-                            <div class="participants mt-2">
-                                ${task.participants_info ? task.participants_info.map(p => 
-                                    `<img src="${p.avatar_url || '/images/default-avatar.png'}" 
-                                          class="avatar avatar-sm me-1" 
-                                          title="${p.name}">`
-                                ).join('') : ''}
                             </div>
                         </div>
                     </div>
@@ -755,28 +780,8 @@ function displayNotifications(notifications) {
 
 // 加载人员选择器
 async function loadStaffSelectors() {
-    try {
-        const response = await fetch('/api/staff');
-        const staff = await response.json();
-        
-        const assigneeSelect = document.getElementById('task-assignee');
-        const participantsSelect = document.getElementById('task-participants');
-        
-        assigneeSelect.innerHTML = '<option value="">选择负责人</option>' +
-            staff.map(person => `<option value="${person.id}">${person.name}</option>`).join('');
-        
-        participantsSelect.innerHTML = staff.map(person => 
-            `<option value="${person.id}">${person.name}</option>`
-        ).join('');
-    } catch (error) {
-        console.error('加载人员选择器失败:', error);
-    }
-}
-
-// 显示创建任务模态框
-function showCreateTaskModal() {
-    const modal = new bootstrap.Modal(document.getElementById('createTaskModal'));
-    modal.show();
+    // 此函数用于在表单中加载员工数据
+    // 项目创建和编辑表单会调用 loadStaffToSelect
 }
 
 // 显示创建人员模态框
@@ -785,41 +790,6 @@ function showCreateStaffModal() {
     modal.show();
 }
 
-// 创建任务
-async function createTask() {
-    try {
-        const formData = {
-            title: document.getElementById('task-title').value,
-            description: document.getElementById('task-description').value,
-            assignee_id: document.getElementById('task-assignee').value || null,
-            participants: Array.from(document.getElementById('task-participants').selectedOptions).map(option => parseInt(option.value)),
-            priority: parseInt(document.getElementById('task-priority').value),
-            start_time: document.getElementById('task-start-time').value || null,
-            estimated_completion_time: document.getElementById('task-end-time').value || null,
-            created_by: currentUserId
-        };
-        
-        const response = await fetch('/api/tasks', {
-            method: 'POST',
-            headers: AuthManager.getAuthHeaders(),
-            body: JSON.stringify(formData)
-        });
-        
-        if (response.ok) {
-            showAlert('任务创建成功', 'success');
-            bootstrap.Modal.getInstance(document.getElementById('createTaskModal')).hide();
-            document.getElementById('createTaskForm').reset();
-            await loadTasks();
-            await loadTaskStats();
-        } else {
-            const error = await response.json();
-            showAlert(error.error || '创建任务失败', 'danger');
-        }
-    } catch (error) {
-        console.error('创建任务失败:', error);
-        showAlert('创建任务失败', 'danger');
-    }
-}
 
 // 创建人员
 async function createStaff() {
@@ -950,38 +920,6 @@ function showAlert(message, type = 'info') {
     }, 5000);
 }
 
-// 编辑和删除功能（简化版本）
-function editTask(taskId) {
-    showAlert('编辑功能开发中...', 'info');
-}
-
-async function deleteTask(taskId) {
-    if (!confirm('确定要删除这个任务吗？此操作不可恢复。')) {
-        return;
-    }
-    
-    try {
-        const response = await fetch(`/api/tasks/${taskId}`, {
-            method: 'DELETE',
-            headers: AuthManager.getAuthHeaders()
-        });
-        
-        if (response.ok) {
-            showAlert('任务删除成功', 'success');
-            // 刷新所有相关数据
-            await Promise.all([
-                loadTasks(),                             // 刷新任务列表
-                loadTaskStats()                          // 刷新任务统计
-            ]);
-        } else {
-            const error = await response.json();
-            showAlert(error.error || '删除任务失败', 'danger');
-        }
-    } catch (error) {
-        console.error('删除任务失败:', error);
-        showAlert('删除任务失败', 'danger');
-    }
-}
 
 async function editStaff(staffId) {
     try {

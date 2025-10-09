@@ -115,9 +115,9 @@
             <div class="row">
                 <div class="col-12">
                     <div class="d-flex justify-content-between align-items-center mb-4">
-                        <h2><i class="fas fa-tasks me-2"></i>任务管理</h2>
-                        <button class="btn btn-primary" onclick="showCreateTaskModal()">
-                            <i class="fas fa-plus me-1"></i>创建任务
+                        <h2><i class="fas fa-tasks me-2"></i>任务管理 <small class="text-muted">（综合看板）</small></h2>
+                        <button class="btn btn-primary" onclick="showCreateProjectModal()">
+                            <i class="fas fa-folder-plus me-1"></i>创建项目
                         </button>
                     </div>
                 </div>
@@ -190,6 +190,13 @@
                                 </div>
                                 <div class="col-md-6">
                                     <div class="d-flex gap-2">
+                                        <select class="form-select form-select-sm" id="department-filter" onchange="loadTasks()">
+                                            <option value="">全部部门</option>
+                                            <option value="产业分析">产业分析</option>
+                                            <option value="创意实践">创意实践</option>
+                                            <option value="活动策划">活动策划</option>
+                                            <option value="资源拓展">资源拓展</option>
+                                        </select>
                                         <select class="form-select form-select-sm" id="status-filter" onchange="loadTasks()">
                                             <option value="">全部状态</option>
                                             <option value="1">待开始</option>
@@ -288,80 +295,6 @@
             </div>
         </div>
 
-    </div>
-
-    <!-- 创建任务模态框 -->
-    <div class="modal fade" id="createTaskModal" tabindex="-1">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">创建任务</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <form id="createTaskForm">
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label for="task-title" class="form-label">任务名称 *</label>
-                                    <input type="text" class="form-control" id="task-title" required>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label for="task-priority" class="form-label">优先级</label>
-                                    <select class="form-select" id="task-priority">
-                                        <option value="1">低</option>
-                                        <option value="2" selected>中</option>
-                                        <option value="3">高</option>
-                                        <option value="4">紧急</option>
-                                    </select>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="mb-3">
-                            <label for="task-description" class="form-label">任务描述</label>
-                            <textarea class="form-control" id="task-description" rows="3"></textarea>
-                        </div>
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label for="task-assignee" class="form-label">负责人</label>
-                                    <select class="form-select" id="task-assignee">
-                                        <option value="">选择负责人</option>
-                                    </select>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label for="task-participants" class="form-label">参与人</label>
-                                    <select class="form-select" id="task-participants" multiple>
-                                    </select>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label for="task-start-time" class="form-label">开始时间</label>
-                                    <input type="datetime-local" class="form-control" id="task-start-time">
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label for="task-end-time" class="form-label">预计完成时间</label>
-                                    <input type="datetime-local" class="form-control" id="task-end-time">
-                                </div>
-                            </div>
-                        </div>
-                    </form>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
-                    <button type="button" class="btn btn-primary" onclick="createTask()">创建任务</button>
-                </div>
-            </div>
-        </div>
     </div>
 
     <!-- 创建人员模态框 -->
