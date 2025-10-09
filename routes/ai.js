@@ -418,22 +418,32 @@ router.post('/create-task', authenticateToken, async (req, res) => {
             for (const [aiField, value] of Object.entries(taskData)) {
                 // 只处理在映射表中定义的字段
                 if (!fieldMapping[aiField]) {
-                    console.log(`⚠️  跳过未定义的字段: ${aiField}`);
+                    console.log(`⚠️  跳过未定义的字段: ${aiField}, 值: ${value}`);
                     continue;
                 }
                 
                 const dbField = fieldMapping[aiField];
                 let processedValue = value;
                 
-                console.log(`🔄 处理字段: ${aiField} -> ${dbField}, 值: ${value}`);
+                console.log(`🔄 处理字段: ${aiField} -> ${dbField}, 值: ${value}, 类型: ${typeof value}`);
                 
                 // 处理优先级和状态的数据类型转换
-                if (aiField === '优先级' && priorityMap[value]) {
-                    processedValue = priorityMap[value];
-                    console.log(`✅ 优先级转换: ${value} -> ${processedValue}`);
-                } else if (aiField === '状态' && statusMap[value]) {
-                    processedValue = statusMap[value];
-                    console.log(`✅ 状态转换: ${value} -> ${processedValue}`);
+                if (aiField === '优先级') {
+                    if (typeof value === 'string' && priorityMap[value]) {
+                        processedValue = priorityMap[value];
+                        console.log(`✅ 优先级转换: ${value} -> ${processedValue}`);
+                    } else if (typeof value === 'number') {
+                        processedValue = value;
+                        console.log(`✅ 优先级已是数字: ${value}`);
+                    }
+                } else if (aiField === '状态') {
+                    if (typeof value === 'string' && statusMap[value]) {
+                        processedValue = statusMap[value];
+                        console.log(`✅ 状态转换: ${value} -> ${processedValue}`);
+                    } else if (typeof value === 'number') {
+                        processedValue = value;
+                        console.log(`✅ 状态已是数字: ${value}`);
+                    }
                 }
                 
                 mappedData[dbField] = processedValue;
@@ -450,8 +460,10 @@ router.post('/create-task', authenticateToken, async (req, res) => {
             const placeholders = values.map((_, i) => `$${i + 1}`).join(', ');
             const columnNames = columns.map(col => `"${col}"`).join(', ');
 
+            console.log('📝 最终字段列表:', columns);
+            console.log('📝 最终参数值:', values);
+            console.log('📝 参数值类型:', values.map(v => typeof v));
             console.log('📝 执行部门任务 SQL:', `INSERT INTO "${department}" (${columnNames}) VALUES (${placeholders})`);
-            console.log('📝 参数值:', values);
             
             const sql = `INSERT INTO "${department}" (${columnNames}) VALUES (${placeholders}) RETURNING *`;
             
