@@ -11,6 +11,57 @@ const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
 const conversations = new Map();
 
 /**
+ * 转换中文日期格式为 ISO 格式
+ */
+function convertChineseDateToISO(dateStr) {
+    if (!dateStr) return null;
+    
+    // 已经是 ISO 格式或标准格式
+    if (/^\d{4}-\d{2}-\d{2}/.test(dateStr)) {
+        return dateStr;
+    }
+    
+    // 中文格式: "2023年10月15日" -> "2023-10-15"
+    const chineseMatch = dateStr.match(/(\d{4})年(\d{1,2})月(\d{1,2})日/);
+    if (chineseMatch) {
+        const year = chineseMatch[1];
+        const month = chineseMatch[2].padStart(2, '0');
+        const day = chineseMatch[3].padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    }
+    
+    // 斜杠格式: "2023/10/15" -> "2023-10-15"
+    const slashMatch = dateStr.match(/(\d{4})\/(\d{1,2})\/(\d{1,2})/);
+    if (slashMatch) {
+        const year = slashMatch[1];
+        const month = slashMatch[2].padStart(2, '0');
+        const day = slashMatch[3].padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    }
+    
+    // 点格式: "2023.10.15" -> "2023-10-15"
+    const dotMatch = dateStr.match(/(\d{4})\.(\d{1,2})\.(\d{1,2})/);
+    if (dotMatch) {
+        const year = dotMatch[1];
+        const month = dotMatch[2].padStart(2, '0');
+        const day = dotMatch[3].padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    }
+    
+    // 尝试解析其他格式
+    try {
+        const date = new Date(dateStr);
+        if (!isNaN(date.getTime())) {
+            return date.toISOString().split('T')[0];
+        }
+    } catch (e) {
+        console.warn('⚠️  无法解析日期:', dateStr);
+    }
+    
+    return null;
+}
+
+/**
  * 调用 Groq API
  */
 async function callGroqAPI(messages, temperature = 0.7, retryCount = 0) {
@@ -267,6 +318,21 @@ router.post('/create-task', authenticateToken, async (req, res) => {
         }
         
         console.log('✅ 任务名称字段存在:', taskData.任务名称);
+
+        // 转换日期格式
+        if (taskData.开始时间) {
+            const originalStart = taskData.开始时间;
+            taskData.开始时间 = convertChineseDateToISO(originalStart);
+            console.log(`📅 转换开始时间: "${originalStart}" -> "${taskData.开始时间}"`);
+        }
+        
+        if (taskData.预计完成时间) {
+            const originalEnd = taskData.预计完成时间;
+            taskData.预计完成时间 = convertChineseDateToISO(originalEnd);
+            console.log(`📅 转换预计完成时间: "${originalEnd}" -> "${taskData.预计完成时间}"`);
+        }
+        
+        console.log('✅ 日期转换完成，当前 taskData:', taskData);
 
         // 判断是部门任务还是通用任务
         const department = taskData.部门;
