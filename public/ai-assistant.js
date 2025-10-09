@@ -275,6 +275,8 @@ class AIAssistant {
      */
     async createTask(taskData) {
         try {
+            console.log('📤 准备创建任务:', taskData);
+            
             // 尝试从两个可能的位置获取 token
             const token = localStorage.getItem('token') || localStorage.getItem('auth_token');
             
@@ -282,6 +284,8 @@ class AIAssistant {
                 this.addMessage('请先登录后再创建任务。', 'ai', true);
                 throw new Error('未登录，请先登录');
             }
+            
+            console.log('🔑 Token 已获取，准备发送请求');
             
             const response = await fetch('/api/ai/create-task', {
                 method: 'POST',
@@ -292,10 +296,29 @@ class AIAssistant {
                 body: JSON.stringify({ taskData })
             });
 
+            console.log('📡 服务器响应状态:', response.status);
+
             if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                console.error('❌ 创建任务失败:', response.status, errorData);
-                throw new Error(errorData.error || `创建任务失败 (${response.status})`);
+                const contentType = response.headers.get('content-type');
+                let errorData = {};
+                
+                if (contentType && contentType.includes('application/json')) {
+                    errorData = await response.json();
+                } else {
+                    const errorText = await response.text();
+                    console.error('❌ 服务器返回非JSON错误:', errorText);
+                    errorData = { error: errorText || '服务器错误' };
+                }
+                
+                console.error('❌ 创建任务失败:', {
+                    status: response.status,
+                    error: errorData
+                });
+                
+                // 显示详细错误信息
+                const errorMessage = errorData.details || errorData.error || `创建任务失败 (${response.status})`;
+                this.addMessage(`❌ 创建任务失败: ${errorMessage}`, 'ai', true);
+                throw new Error(errorMessage);
             }
 
             const result = await response.json();

@@ -190,24 +190,40 @@ router.post('/chat', authenticateToken, async (req, res) => {
  */
 router.post('/create-task', authenticateToken, async (req, res) => {
     try {
+        console.log('📥 收到创建任务请求');
+        console.log('请求体:', JSON.stringify(req.body, null, 2));
+        console.log('用户信息:', req.user);
+        
         const { taskData } = req.body;
-        const db = require('../database-postgres');
+        
+        // 根据环境变量选择数据库
+        const usePostgres = process.env.DATABASE_URL;
+        console.log('🔧 数据库类型:', usePostgres ? 'PostgreSQL' : 'SQLite');
+        
+        const db = usePostgres ? require('../database-postgres') : require('../database');
         
         console.log('📝 创建任务请求:', {
             userId: req.user.userId,
+            username: req.user.username,
             taskData: taskData
         });
 
         if (!taskData || !taskData.任务名称) {
             console.error('❌ 任务数据不完整:', taskData);
-            return res.status(400).json({ error: '任务数据不完整' });
+            return res.status(400).json({ 
+                error: '任务数据不完整',
+                details: '缺少必要的任务名称字段'
+            });
         }
 
         // 判断是部门任务还是通用任务
         const department = taskData.部门;
+        console.log('🏢 部门信息:', department);
+        
         delete taskData.部门; // 从数据中移除部门字段
 
         if (department && ['产业分析', '创意实践', '活动策划', '资源拓展'].includes(department)) {
+            console.log('✅ 识别为部门任务，部门:', department);
             // 创建部门任务
             // 字段名映射：AI 字段名 -> 数据库字段名
             const fieldMapping = {
@@ -285,13 +301,9 @@ router.post('/create-task', authenticateToken, async (req, res) => {
                 throw new Error(`数据库操作失败: ${dbError.message}`);
             }
         } else {
-            // 创建通用任务
-            const sql = `
-                INSERT INTO tasks (title, description, assignee_id, priority, status, start_time, estimated_completion_time, created_by)
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-                RETURNING *
-            `;
+            console.log('✅ 识别为通用任务');
             
+            // 创建通用任务
             // 将中文优先级转换为数字
             const priorityMap = { '低': 1, '中': 2, '高': 3, '紧急': 4 };
             const statusMap = { '待开始': 1, '进行中': 2, '已完成': 3, '已取消': 4 };
@@ -307,25 +319,67 @@ router.post('/create-task', authenticateToken, async (req, res) => {
                 req.user.userId
             ];
 
-            console.log('📝 执行通用任务 SQL:', sql);
-            console.log('📝 参数值:', values);
+            console.log('📝 准备创建通用任务');
+            console.log('📝 任务数据:', values);
             
-            const result = await db.query(sql, values);
-            console.log('✅ 通用任务创建成功:', result.rows[0]);
-
-            res.json({ 
-                success: true, 
-                task: result.rows[0],
-                type: 'general'
-            });
+            let result;
+            if (usePostgres) {
+                // PostgreSQL 使用 $1, $2 占位符
+                const sql = `
+                    INSERT INTO tasks (title, description, assignee_id, priority, status, start_time, estimated_completion_time, created_by)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                    RETURNING *
+                `;
+                console.log('📝 执行 PostgreSQL SQL');
+                result = await db.query(sql, values);
+                console.log('✅ PostgreSQL 返回:', result);
+                
+                res.json({ 
+                    success: true, 
+                    task: result[0],
+                    type: 'general'
+                });
+            } else {
+                // SQLite 使用 ? 占位符
+                const sql = `
+                    INSERT INTO tasks (title, description, assignee_id, priority, status, start_time, estimated_completion_time, created_by)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                `;
+                console.log('📝 执行 SQLite SQL');
+                result = await db.run(sql, values);
+                console.log('✅ SQLite 返回 ID:', result.id);
+                
+                // 获取创建的任务
+                const task = await db.get('SELECT * FROM tasks WHERE id = ?', [result.id]);
+                console.log('✅ 获取到的任务:', task);
+                
+                res.json({ 
+                    success: true, 
+                    task: task,
+                    type: 'general'
+                });
+            }
         }
 
     } catch (error) {
         console.error('❌ 创建任务错误:', error);
+        console.error('❌ 错误类型:', error.constructor.name);
+        console.error('❌ 错误消息:', error.message);
         console.error('❌ 错误堆栈:', error.stack);
+        
+        // 检查是否是数据库连接错误
+        if (error.message && error.message.includes('连接池未初始化')) {
+            return res.status(500).json({ 
+                error: '数据库连接失败', 
+                details: '数据库连接池未初始化，请检查环境变量 DATABASE_URL 是否配置正确',
+                hint: '如果使用本地开发，请确保有 .env 文件或使用 SQLite'
+            });
+        }
+        
         res.status(500).json({ 
             error: '创建任务失败', 
-            details: error.message,
+            details: error.message || '未知错误',
+            errorType: error.constructor.name,
             stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
         });
     }
