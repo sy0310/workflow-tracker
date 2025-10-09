@@ -48,19 +48,19 @@ class AIAssistant {
      * 添加欢迎消息
      */
     addWelcomeMessage() {
-        const welcomeMsg = `👋 你好！我是 AI 任务助手。
+        const welcomeMsg = `👋 你好！我是 AI 项目助手。
 
 我可以帮你：
-✅ 智能创建任务
+✅ 智能创建项目
 ✅ 自动识别部门
 ✅ 补充必要信息
-✅ 生成完整任务
+✅ 生成完整项目
 
 试试对我说：
-"帮我创建一个新能源汽车市场分析任务，负责人张三，优先级高"
+"帮我创建一个新能源汽车市场分析项目，负责人张三，优先级高"
 
 或者简单地说：
-"创建一个任务"
+"创建一个项目"
 
 我会逐步引导你完成！😊`;
 
@@ -277,7 +277,7 @@ class AIAssistant {
     }
 
     /**
-     * 确认并创建任务（从存储的数据中读取）
+     * 确认并创建项目（从存储的数据中读取）
      */
     confirmAndCreateTask() {
         if (!this.pendingTaskData) {
@@ -289,17 +289,17 @@ class AIAssistant {
     }
 
     /**
-     * 创建任务
+     * 创建项目
      */
     async createTask(taskData) {
         try {
-            console.log('📤 准备创建任务:', taskData);
+            console.log('📤 准备创建项目:', taskData);
             
             // 尝试从两个可能的位置获取 token
             const token = localStorage.getItem('token') || localStorage.getItem('auth_token');
             
             if (!token) {
-                this.addMessage('请先登录后再创建任务。', 'ai', true);
+                this.addMessage('请先登录后再创建项目。', 'ai', true);
                 throw new Error('未登录，请先登录');
             }
             
@@ -328,14 +328,14 @@ class AIAssistant {
                     errorData = { error: errorText || '服务器错误' };
                 }
                 
-                console.error('❌ 创建任务失败:', {
+                console.error('❌ 创建项目失败:', {
                     status: response.status,
                     error: errorData
                 });
                 
                 // 显示详细错误信息
-                const errorMessage = errorData.details || errorData.error || `创建任务失败 (${response.status})`;
-                this.addMessage(`❌ 创建任务失败: ${errorMessage}`, 'ai', true);
+                const errorMessage = errorData.details || errorData.error || `创建项目失败 (${response.status})`;
+                this.addMessage(`❌ 创建项目失败: ${errorMessage}`, 'ai', true);
                 throw new Error(errorMessage);
             }
 
@@ -359,8 +359,8 @@ class AIAssistant {
             }
 
         } catch (error) {
-            console.error('创建任务失败:', error);
-            this.addMessage('抱歉，创建任务时出现错误。请手动创建或稍后重试。', 'ai', true);
+            console.error('创建项目失败:', error);
+            this.addMessage('抱歉，创建项目时出现错误。请手动创建或稍后重试。', 'ai', true);
         }
     }
 

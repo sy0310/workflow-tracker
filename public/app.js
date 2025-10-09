@@ -495,20 +495,50 @@ function formatDateTimeForInput(dateString) {
     return `${year}-${month}-${day}T${hours}:${minutes}`;
 }
 
-// 加载任务统计
+// 加载任务统计（统计四个部门的所有项目）
 async function loadTaskStats() {
     try {
-        const response = await fetch('/api/tasks/stats/overview', {
-            headers: AuthManager.getAuthHeaders()
-        });
-        const stats = await response.json();
+        const departments = ['产业分析', '创意实践', '活动策划', '资源拓展'];
         
-        document.getElementById('total-tasks').textContent = stats.total_tasks || 0;
-        document.getElementById('pending-tasks').textContent = stats.pending_tasks || 0;
-        document.getElementById('in-progress-tasks').textContent = stats.in_progress_tasks || 0;
-        document.getElementById('completed-tasks').textContent = stats.completed_tasks || 0;
+        // 并行加载所有部门的项目
+        const promises = departments.map(dept => 
+            fetch(`/api/departments/${encodeURIComponent(dept)}/projects`, {
+                headers: AuthManager.getAuthHeaders()
+            })
+            .then(res => res.json())
+            .catch(err => {
+                console.error(`加载${dept}项目统计失败:`, err);
+                return [];
+            })
+        );
+        
+        const results = await Promise.all(promises);
+        
+        // 合并所有项目
+        let allProjects = [];
+        results.forEach(result => {
+            if (Array.isArray(result)) {
+                allProjects = allProjects.concat(result);
+            }
+        });
+        
+        // 统计
+        const total = allProjects.length;
+        const pending = allProjects.filter(p => p.状态 === 1).length;
+        const inProgress = allProjects.filter(p => p.状态 === 2).length;
+        const completed = allProjects.filter(p => p.状态 === 3).length;
+        
+        document.getElementById('total-tasks').textContent = total;
+        document.getElementById('pending-tasks').textContent = pending;
+        document.getElementById('in-progress-tasks').textContent = inProgress;
+        document.getElementById('completed-tasks').textContent = completed;
     } catch (error) {
         console.error('加载任务统计失败:', error);
+        // 出错时显示0
+        document.getElementById('total-tasks').textContent = 0;
+        document.getElementById('pending-tasks').textContent = 0;
+        document.getElementById('in-progress-tasks').textContent = 0;
+        document.getElementById('completed-tasks').textContent = 0;
     }
 }
 
