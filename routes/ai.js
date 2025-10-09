@@ -16,15 +16,24 @@ const conversations = new Map();
 async function callGroqAPI(messages, temperature = 0.7, retryCount = 0) {
     if (!GROQ_API_KEY) {
         console.error('❌ GROQ_API_KEY 未配置');
-        throw new Error('GROQ_API_KEY 未配置，请在 Vercel 环境变量中添加');
+        throw new Error('GROQ_API_KEY 未配置，请在环境变量中添加');
     }
 
-    // 备用模型列表
-    const models = ['llama-3.3-70b-versatile', 'llama-3.1-70b-versatile', 'llama-3.1-8b-instant'];
-    const currentModel = models[retryCount] || models[0];
+    // 备用模型列表（按可用性排序）
+    const models = [
+        'llama-3.1-8b-instant',      // 最快，最稳定
+        'llama-3.1-70b-versatile',   // 备用大模型
+        'mixtral-8x7b-32768',        // 另一个备用选项
+        'llama-3.3-70b-versatile'    // 最后尝试
+    ];
     
-    console.log(`🤖 调用 Groq API... (模型: ${currentModel}, 重试次数: ${retryCount})`);
-    console.log('API Key 前缀:', GROQ_API_KEY.substring(0, 10) + '...');
+    const currentModel = models[retryCount % models.length];
+    
+    console.log(`🤖 调用 Groq API... (模型: ${currentModel}, 尝试 ${retryCount + 1}/${models.length})`);
+    
+    if (retryCount === 0) {
+        console.log('API Key 前缀:', GROQ_API_KEY.substring(0, 10) + '...');
+    }
 
     try {
         const response = await fetch(GROQ_API_URL, {
@@ -47,7 +56,27 @@ async function callGroqAPI(messages, temperature = 0.7, retryCount = 0) {
 
         if (!response.ok) {
             const errorText = await response.text();
-            console.error('Groq API 错误响应:', errorText);
+            console.error(`Groq API 错误响应 (${currentModel}):`, errorText);
+            
+            // 解析错误信息
+            let errorData;
+            try {
+                errorData = JSON.parse(errorText);
+            } catch (e) {
+                errorData = { error: { message: errorText } };
+            }
+            
+            // 检查是否是容量问题
+            const isCapacityError = errorData.error?.message?.includes('over capacity') || 
+                                   errorData.error?.message?.includes('503') ||
+                                   response.status === 503;
+            
+            if (isCapacityError && retryCount < models.length - 1) {
+                console.log(`⚠️  ${currentModel} 容量已满，尝试备用模型...`);
+                await new Promise(resolve => setTimeout(resolve, 500)); // 短暂延迟
+                return await callGroqAPI(messages, temperature, retryCount + 1);
+            }
+            
             throw new Error(`Groq API 错误 (${response.status}): ${errorText}`);
         }
 
@@ -69,13 +98,16 @@ async function callGroqAPI(messages, temperature = 0.7, retryCount = 0) {
             // 如果还有备用模型，尝试重试
             if (retryCount < models.length - 1) {
                 console.log(`🔄 尝试使用备用模型重试...`);
+                await new Promise(resolve => setTimeout(resolve, 500));
                 return await callGroqAPI(messages, temperature, retryCount + 1);
             }
             
             throw new Error('AI 响应包含乱码，请重试');
         }
         
+        console.log(`✅ 模型 ${currentModel} 响应成功`);
         return content;
+        
     } catch (error) {
         console.error('Groq API 调用失败:', error);
         
@@ -83,9 +115,12 @@ async function callGroqAPI(messages, temperature = 0.7, retryCount = 0) {
         if (retryCount < models.length - 1 && (
             error.message.includes('model') || 
             error.message.includes('decommissioned') ||
-            error.message.includes('not found')
+            error.message.includes('not found') ||
+            error.message.includes('capacity')
         )) {
-            console.log(`🔄 模型错误，尝试使用备用模型重试...`);
+            console.log(`🔄 错误: ${error.message.substring(0, 100)}...`);
+            console.log(`🔄 尝试使用备用模型 (${retryCount + 2}/${models.length})...`);
+            await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1))); // 递增延迟
             return await callGroqAPI(messages, temperature, retryCount + 1);
         }
         
