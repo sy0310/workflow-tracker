@@ -560,20 +560,32 @@ async function loadTasks() {
             fetch(`/api/departments/${encodeURIComponent(dept)}/projects`, {
                 headers: AuthManager.getAuthHeaders()
             })
-            .then(res => res.json())
-            .then(projects => projects.map(p => ({
-                ...p,
-                department: dept, // 添加部门标识
-                // 统一字段名
-                title: p.项目名称,
-                description: p.项目描述,
-                assignee_name: p.负责人,
-                priority: p.优先级,
-                status: p.状态,
-                created_at: p.创建时间,
-                estimated_completion_time: p.预计完成时间,
-                actual_completion_time: p.实际完成时间
-            })))
+            .then(res => {
+                if (!res.ok) {
+                    console.warn(`${dept}项目加载失败: HTTP ${res.status}`);
+                    return [];
+                }
+                return res.json();
+            })
+            .then(projects => {
+                if (!Array.isArray(projects)) {
+                    console.warn(`${dept}返回的数据不是数组:`, projects);
+                    return [];
+                }
+                return projects.map(p => ({
+                    ...p,
+                    department: dept, // 添加部门标识
+                    // 统一字段名
+                    title: p.项目名称,
+                    description: p.项目描述,
+                    assignee_name: p.负责人,
+                    priority: p.优先级,
+                    status: p.状态,
+                    created_at: p.创建时间,
+                    estimated_completion_time: p.预计完成时间,
+                    actual_completion_time: p.实际完成时间
+                }));
+            })
             .catch(err => {
                 console.error(`加载${dept}项目失败:`, err);
                 return [];
@@ -609,7 +621,15 @@ async function loadTasks() {
         displayTasks(filteredTasks);
     } catch (error) {
         console.error('加载任务列表失败:', error);
-        showAlert('加载任务列表失败', 'danger');
+        console.error('错误详情:', error.message);
+        console.error('错误堆栈:', error.stack);
+        
+        // 显示友好的错误消息
+        const errorMsg = error.message || '加载项目列表失败，请刷新页面重试';
+        showAlert(errorMsg, 'danger');
+        
+        // 显示空状态
+        displayTasks([]);
     }
 }
 
