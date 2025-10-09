@@ -24,20 +24,8 @@ async function initializeApp() {
 
         // 显示用户信息
         updateUserInfo();
-
-        // 加载任务统计
-        await loadTaskStats();
         
-        // 加载任务列表
-        await loadTasks();
-        
-        // 加载人员列表
-        await loadStaff();
-        
-        // 加载提醒列表
-        await loadNotifications();
-        
-        // 加载人员选择器
+        // 加载人员选择器（用于各个表单）
         await loadStaffSelectors();
         
         // 设置事件监听器
@@ -117,6 +105,16 @@ function showSection(sectionName) {
         link.classList.remove('active');
     });
     event.target.classList.add('active');
+    
+    // 根据不同的部分加载相应数据
+    if (sectionName === 'tasks') {
+        loadTasks();
+        loadTaskStats();
+    } else if (sectionName === 'staff') {
+        loadStaff();
+    } else if (sectionName === 'notifications') {
+        loadNotifications();
+    }
 }
 
 // 选择部门
@@ -514,96 +512,46 @@ async function loadTaskStats() {
     }
 }
 
-// 加载任务列表
+// 加载任务列表（只加载通用任务，不包括部门项目）
 async function loadTasks() {
     try {
-        const departmentFilter = document.getElementById('department-filter').value;
         const statusFilter = document.getElementById('status-filter').value;
         const priorityFilter = document.getElementById('priority-filter').value;
         
-        // 并行加载所有数据
-        const departments = ['产业分析', '创意实践', '活动策划', '资源拓展'];
+        // 只加载通用任务
+        const response = await fetch('/api/tasks', { 
+            headers: AuthManager.getAuthHeaders() 
+        });
         
-        const promises = [];
-        
-        // 根据部门筛选决定加载哪些数据
-        if (!departmentFilter || departmentFilter === '通用任务') {
-            // 加载通用任务
-            promises.push(
-                fetch('/api/tasks', { headers: AuthManager.getAuthHeaders() })
-                    .then(res => res.json())
-                    .catch(err => {
-                        console.error('加载通用任务失败:', err);
-                        return [];
-                    })
-            );
+        if (!response.ok) {
+            throw new Error('加载任务失败');
         }
         
-        // 加载部门的项目
-        const depsToLoad = departmentFilter && departmentFilter !== '通用任务' 
-            ? [departmentFilter] 
-            : departments;
-            
-        depsToLoad.forEach(dept => {
-            promises.push(
-                fetch(`/api/departments/${encodeURIComponent(dept)}/projects`, {
-                    headers: AuthManager.getAuthHeaders()
-                })
-                .then(res => res.json())
-                .then(projects => projects.map(p => ({
-                    ...p,
-                    department: dept, // 添加部门标识
-                    // 统一字段名
-                    title: p.项目名称,
-                    description: p.项目描述,
-                    assignee_name: p.负责人,
-                    priority: p.优先级,
-                    status: p.状态,
-                    created_at: p.创建时间,
-                    estimated_completion_time: p.预计完成时间,
-                    actual_completion_time: p.实际完成时间
-                })))
-                .catch(err => {
-                    console.error(`加载${dept}项目失败:`, err);
-                    return [];
-                })
-            );
-        });
-        
-        const results = await Promise.all(promises);
-        
-        // 合并所有任务和项目
-        let allTasks = [];
-        results.forEach(result => {
-            if (Array.isArray(result)) {
-                allTasks = allTasks.concat(result);
-            }
-        });
+        let tasks = await response.json();
         
         // 应用筛选
-        let filteredTasks = allTasks;
         if (statusFilter) {
-            filteredTasks = filteredTasks.filter(t => t.status == statusFilter);
+            tasks = tasks.filter(t => t.status == statusFilter);
         }
         if (priorityFilter) {
-            filteredTasks = filteredTasks.filter(t => t.priority == priorityFilter);
+            tasks = tasks.filter(t => t.priority == priorityFilter);
         }
         
         // 按创建时间降序排序
-        filteredTasks.sort((a, b) => {
+        tasks.sort((a, b) => {
             const dateA = new Date(a.created_at || 0);
             const dateB = new Date(b.created_at || 0);
             return dateB - dateA;
         });
         
-        displayTasks(filteredTasks);
+        displayTasks(tasks);
     } catch (error) {
         console.error('加载任务列表失败:', error);
         showAlert('加载任务列表失败', 'danger');
     }
 }
 
-// 显示任务列表
+// 显示任务列表（只显示通用任务）
 function displayTasks(tasks) {
     const tasksList = document.getElementById('tasks-list');
     
@@ -626,7 +574,7 @@ function displayTasks(tasks) {
                         <div class="col-md-8">
                             <h5 class="card-title">
                                 ${task.title}
-                                ${task.department ? `<span class="badge bg-secondary ms-2">${task.department}</span>` : '<span class="badge bg-info ms-2">通用任务</span>'}
+                                <span class="badge bg-info ms-2">通用任务</span>
                             </h5>
                             <p class="card-text text-muted">${task.description || '无描述'}</p>
                             <div class="d-flex flex-wrap gap-2 mb-2">
@@ -650,25 +598,14 @@ function displayTasks(tasks) {
                             </div>
                         </div>
                         <div class="col-md-4 text-end">
-                            ${task.department ? `
-                                <div class="task-actions">
-                                    <button class="btn btn-sm btn-outline-primary me-1" onclick="editProject('${task.department}', ${task.id})">
-                                        <i class="fas fa-edit"></i>
-                                    </button>
-                                    <button class="btn btn-sm btn-outline-danger" onclick="deleteProject('${task.department}', ${task.id}, '${task.title}')">
-                                        <i class="fas fa-trash"></i>
-                                    </button>
-                                </div>
-                            ` : `
-                                <div class="task-actions">
-                                    <button class="btn btn-sm btn-outline-primary me-1" onclick="editTask(${task.id})">
-                                        <i class="fas fa-edit"></i>
-                                    </button>
-                                    <button class="btn btn-sm btn-outline-danger" onclick="deleteTask(${task.id})">
-                                        <i class="fas fa-trash"></i>
-                                    </button>
-                                </div>
-                            `}
+                            <div class="task-actions">
+                                <button class="btn btn-sm btn-outline-primary me-1" onclick="editTask(${task.id})">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button class="btn btn-sm btn-outline-danger" onclick="deleteTask(${task.id})">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
                             <div class="participants mt-2">
                                 ${task.participants_info ? task.participants_info.map(p => 
                                     `<img src="${p.avatar_url || '/images/default-avatar.png'}" 
