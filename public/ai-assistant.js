@@ -7,6 +7,7 @@ class AIAssistant {
         this.conversationId = null;
         this.messages = [];
         this.isProcessing = false;
+        this.pendingTaskData = null; // 存储待确认的任务数据
     }
 
     /**
@@ -231,6 +232,11 @@ class AIAssistant {
      * 显示任务确认界面
      */
     showTaskConfirmation(taskData) {
+        console.log('📋 显示任务确认界面，原始数据:', taskData);
+        
+        // 保存任务数据到实例属性
+        this.pendingTaskData = taskData;
+        
         const container = document.getElementById('aiChatMessages');
         const confirmDiv = document.createElement('div');
         confirmDiv.className = 'ai-task-confirmation';
@@ -255,7 +261,7 @@ class AIAssistant {
                 <div class="card-body">
                     ${taskHTML}
                     <div class="d-flex gap-2 mt-3">
-                        <button class="btn btn-success flex-fill" onclick="aiAssistant.createTask(${JSON.stringify(taskData).replace(/"/g, '&quot;')})">
+                        <button class="btn btn-success flex-fill" onclick="aiAssistant.confirmAndCreateTask()">
                             <i class="bi bi-check-lg"></i> 确认创建
                         </button>
                         <button class="btn btn-outline-secondary" onclick="aiAssistant.rejectTask()">
@@ -268,6 +274,18 @@ class AIAssistant {
 
         container.appendChild(confirmDiv);
         container.scrollTop = container.scrollHeight;
+    }
+
+    /**
+     * 确认并创建任务（从存储的数据中读取）
+     */
+    confirmAndCreateTask() {
+        if (!this.pendingTaskData) {
+            this.addMessage('❌ 任务数据丢失，请重新开始。', 'ai', true);
+            return;
+        }
+        console.log('✅ 从存储读取任务数据:', this.pendingTaskData);
+        this.createTask(this.pendingTaskData);
     }
 
     /**
@@ -350,6 +368,7 @@ class AIAssistant {
      * 拒绝任务（重新填写）
      */
     rejectTask() {
+        this.pendingTaskData = null; // 清除待确认的数据
         this.addMessage('好的，让我们重新开始。请告诉我你想创建什么任务？', 'ai');
     }
 

@@ -237,19 +237,36 @@ router.post('/create-task', authenticateToken, async (req, res) => {
         
         const db = usePostgres ? require('../database-postgres') : require('../database');
         
-        console.log('📝 创建任务请求:', {
-            userId: req.user.userId,
-            username: req.user.username,
-            taskData: taskData
-        });
-
-        if (!taskData || !taskData.任务名称) {
-            console.error('❌ 任务数据不完整:', taskData);
+        console.log('📝 taskData 内容:', taskData);
+        console.log('📝 taskData 类型:', typeof taskData);
+        console.log('📝 taskData 的键:', taskData ? Object.keys(taskData) : 'null');
+        
+        if (!taskData) {
+            console.error('❌ taskData 为空');
             return res.status(400).json({ 
                 error: '任务数据不完整',
-                details: '缺少必要的任务名称字段'
+                details: 'taskData 为空或未定义',
+                received: req.body
             });
         }
+        
+        console.log('📝 检查任务名称字段...');
+        console.log('📝 taskData["任务名称"]:', taskData['任务名称']);
+        console.log('📝 taskData.任务名称:', taskData.任务名称);
+        
+        if (!taskData.任务名称) {
+            console.error('❌ 任务数据不完整 - 缺少任务名称');
+            console.error('📝 收到的字段:', Object.keys(taskData));
+            console.error('📝 完整数据:', JSON.stringify(taskData, null, 2));
+            return res.status(400).json({ 
+                error: '任务数据不完整',
+                details: '缺少必要的任务名称字段',
+                receivedFields: Object.keys(taskData),
+                taskData: taskData
+            });
+        }
+        
+        console.log('✅ 任务名称字段存在:', taskData.任务名称);
 
         // 判断是部门任务还是通用任务
         const department = taskData.部门;
