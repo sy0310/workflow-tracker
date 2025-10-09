@@ -416,7 +416,13 @@ router.post('/create-task', authenticateToken, async (req, res) => {
             
             const mappedData = {};
             for (const [aiField, value] of Object.entries(taskData)) {
-                const dbField = fieldMapping[aiField] || aiField;
+                // 只处理在映射表中定义的字段
+                if (!fieldMapping[aiField]) {
+                    console.log(`⚠️  跳过未定义的字段: ${aiField}`);
+                    continue;
+                }
+                
+                const dbField = fieldMapping[aiField];
                 let processedValue = value;
                 
                 console.log(`🔄 处理字段: ${aiField} -> ${dbField}, 值: ${value}`);
