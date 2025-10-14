@@ -37,7 +37,8 @@ const upload = multer({
 // 获取所有员工
 router.get('/', async (req, res) => {
   try {
-    const staff = await db.query('SELECT * FROM staff WHERE is_active = true ORDER BY name');
+    // 兼容 SQLite 和 PostgreSQL 的布尔值查询
+    const staff = await db.query('SELECT * FROM staff WHERE is_active = 1 OR is_active = true ORDER BY name');
     res.json(staff);
   } catch (error) {
     console.error('获取员工列表错误:', error);
@@ -48,7 +49,8 @@ router.get('/', async (req, res) => {
 // 获取单个员工信息
 router.get('/:id', async (req, res) => {
   try {
-    const staff = await db.get('SELECT * FROM staff WHERE id = $1 AND is_active = true', [req.params.id]);
+    // 兼容 SQLite 和 PostgreSQL 的布尔值查询
+    const staff = await db.get('SELECT * FROM staff WHERE id = $1 AND (is_active = 1 OR is_active = true)', [req.params.id]);
     if (!staff) {
       return res.status(404).json({ error: '员工不存在' });
     }
@@ -62,22 +64,52 @@ router.get('/:id', async (req, res) => {
 // 创建新员工
 router.post('/', upload.single('avatar'), async (req, res) => {
   try {
+    console.log('📝 创建员工请求:', req.body);
+    console.log('📁 上传文件:', req.file ? req.file.filename : '无文件');
+    console.log('🗄️ 数据库类型:', process.env.DATABASE_URL ? 'PostgreSQL' : 'SQLite');
+    
     const { name, wechat_id, wechat_name, email, phone, department, position } = req.body;
     const avatar_url = req.file ? `/uploads/avatars/${req.file.filename}` : null;
+
+    // 验证必填字段
+    if (!name) {
+      return res.status(400).json({ error: '员工姓名是必填项' });
+    }
+
+    console.log('💾 准备插入数据库:', { name, wechat_id, wechat_name, email, phone, avatar_url, department, position });
+
+    // 先测试数据库连接
+    try {
+      await db.query('SELECT 1');
+      console.log('✅ 数据库连接正常');
+    } catch (dbError) {
+      console.error('❌ 数据库连接失败:', dbError);
+      return res.status(500).json({ error: '数据库连接失败' });
+    }
 
     const result = await db.run(
       'INSERT INTO staff (name, wechat_id, wechat_name, email, phone, avatar_url, department, position) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id',
       [name, wechat_id, wechat_name, email, phone, avatar_url, department, position]
     );
 
+    console.log('✅ 插入结果:', result);
+
     const newStaff = await db.get('SELECT * FROM staff WHERE id = $1', [result.id]);
+    console.log('📋 新员工信息:', newStaff);
+    
     res.status(201).json(newStaff);
   } catch (error) {
-    console.error('创建员工错误:', error);
-    if (error.message.includes('UNIQUE constraint failed')) {
+    console.error('❌ 创建员工错误:', error);
+    console.error('❌ 错误堆栈:', error.stack);
+    
+    if (error.message.includes('UNIQUE constraint failed') || error.message.includes('duplicate key value')) {
       res.status(400).json({ error: '微信ID已存在' });
+    } else if (error.message.includes('not-null') || error.message.includes('null value')) {
+      res.status(400).json({ error: '必填字段不能为空' });
+    } else if (error.message.includes('relation') && error.message.includes('does not exist')) {
+      res.status(500).json({ error: '数据库表不存在，请检查数据库初始化' });
     } else {
-      res.status(500).json({ error: '创建员工失败' });
+      res.status(500).json({ error: '创建员工失败: ' + error.message });
     }
   }
 });
@@ -127,7 +159,8 @@ router.put('/:id', upload.single('avatar'), async (req, res) => {
 // 删除员工（软删除）
 router.delete('/:id', async (req, res) => {
   try {
-    const result = await db.run('UPDATE staff SET is_active = false WHERE id = $1', [req.params.id]);
+    // 兼容 SQLite 和 PostgreSQL 的布尔值更新
+    const result = await db.run('UPDATE staff SET is_active = 0 WHERE id = $1', [req.params.id]);
     if (result.changes === 0) {
       return res.status(404).json({ error: '员工不存在' });
     }
@@ -142,8 +175,9 @@ router.delete('/:id', async (req, res) => {
 router.get('/search/:keyword', async (req, res) => {
   try {
     const keyword = `%${req.params.keyword}%`;
+    // 兼容 SQLite 和 PostgreSQL 的布尔值查询
     const staff = await db.query(
-      'SELECT * FROM staff WHERE is_active = true AND (name LIKE $1 OR wechat_name LIKE $2 OR department LIKE $3) ORDER BY name',
+      'SELECT * FROM staff WHERE (is_active = 1 OR is_active = true) AND (name LIKE $1 OR wechat_name LIKE $2 OR department LIKE $3) ORDER BY name',
       [keyword, keyword, keyword]
     );
     res.json(staff);

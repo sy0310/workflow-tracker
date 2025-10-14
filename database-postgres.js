@@ -64,7 +64,7 @@ async function run(sql, params = []) {
     try {
         const result = await pool.query(sql, params);
         return {
-            id: result.rows[0]?.id || null,
+            id: result.rows[0] ? result.rows[0].id : null,
             changes: result.rowCount
         };
     } catch (error) {
@@ -105,7 +105,15 @@ async function testConnection() {
 
 // 在启动时测试连接
 if (pool) {
-    testConnection();
+    testConnection().then(success => {
+        if (success) {
+            console.log('✅ PostgreSQL 数据库连接成功');
+        } else {
+            console.error('❌ PostgreSQL 数据库连接失败');
+        }
+    });
+} else {
+    console.log('⚠️  PostgreSQL 未配置，使用 SQLite 数据库');
 }
 
 module.exports = {
