@@ -1,14 +1,17 @@
 // 认证相关功能
 class AuthManager {
     constructor() {
-        this.token = localStorage.getItem('auth_token');
-        this.user = JSON.parse(localStorage.getItem('user_info') || 'null');
+        // 不再自动获取token和user，每次都需要重新登录
+        this.token = null;
+        this.user = null;
         this.init();
     }
 
     init() {
         // 绑定事件
         this.bindEvents();
+        // 恢复记住的用户名
+        this.restoreRememberedUsername();
     }
 
     bindEvents() {
@@ -27,6 +30,19 @@ class AuthManager {
                 this.validatePasswordConfirm();
             });
         }
+    }
+
+    // 恢复记住的用户名
+    restoreRememberedUsername() {
+        const rememberedUsername = localStorage.getItem('remembered_username');
+        if (rememberedUsername && document.getElementById('username')) {
+            document.getElementById('username').value = rememberedUsername;
+        }
+    }
+
+    // 保存用户名到本地存储
+    saveRememberedUsername(username) {
+        localStorage.setItem('remembered_username', username);
     }
 
     async login() {
@@ -50,7 +66,10 @@ class AuthManager {
             const data = await response.json();
 
             if (response.ok) {
-                // 保存认证信息（兼容多个存储位置）
+                // 只保存用户名，不保存token和用户信息
+                this.saveRememberedUsername(username);
+                
+                // 临时保存认证信息用于当前会话
                 this.token = data.token;
                 this.user = data.user;
                 localStorage.setItem('auth_token', this.token);
@@ -115,9 +134,9 @@ class AuthManager {
                 
                 // 自动填充登录表单
                 setTimeout(() => {
-                    document.getElementById('loginUsername').value = username;
+                    document.getElementById('username').value = username;
                     // 不自动填充密码，让用户手动输入更安全
-                    document.getElementById('loginUsername').focus();
+                    document.getElementById('username').focus();
                 }, 500);
             } else {
                 this.showError(data.error || '注册失败');
@@ -188,6 +207,28 @@ class AuthManager {
             window.location.href = '/login.html';
             return false;
         }
+
+        // 验证token是否过期
+        try {
+            const payload = JSON.parse(atob(token.split('.')[1]));
+            const currentTime = Math.floor(Date.now() / 1000);
+            
+            if (payload.exp && payload.exp < currentTime) {
+                // Token已过期，清除存储的认证信息并重定向到登录页面
+                localStorage.removeItem('auth_token');
+                localStorage.removeItem('token');
+                localStorage.removeItem('user_info');
+                window.location.href = '/login.html';
+                return false;
+            }
+        } catch (error) {
+            // Token格式错误，清除存储的认证信息并重定向到登录页面
+            localStorage.removeItem('auth_token');
+            localStorage.removeItem('token');
+            localStorage.removeItem('user_info');
+            window.location.href = '/login.html';
+            return false;
+        }
         
         return { token, user };
     }
@@ -195,7 +236,9 @@ class AuthManager {
     // 静态方法：登出
     static logout() {
         localStorage.removeItem('auth_token');
+        localStorage.removeItem('token'); // 兼容 AI 助手
         localStorage.removeItem('user_info');
+        // 不删除记住的用户名，保留用户名记忆功能
         window.location.href = '/login.html';
     }
 

@@ -81,11 +81,11 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ error: '用户名或密码错误' });
     }
 
-    // 生成JWT token
+    // 生成JWT token（设置较短的过期时间，确保每次都需要重新登录）
     const token = jwt.sign(
       { userId: user.id, username: user.username, email: user.email },
       process.env.JWT_SECRET || 'your-secret-key',
-      { expiresIn: '7d' }
+      { expiresIn: '8h' } // 改为8小时，确保每次使用后都需要重新登录
     );
 
     res.json({
