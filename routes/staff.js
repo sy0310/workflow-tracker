@@ -95,7 +95,7 @@ router.get('/:id', async (req, res) => {
       staff = await db.get('SELECT * FROM staff WHERE id = $1 AND is_active = true', [req.params.id]);
     } else {
       // SQLite: is_active 是 INTEGER 类型
-      staff = await db.get('SELECT * FROM staff WHERE id = $1 AND is_active = 1', [req.params.id]);
+      staff = await db.get('SELECT * FROM staff WHERE id = ? AND is_active = 1', [req.params.id]);
     }
     if (!staff) {
       return res.status(404).json({ error: '员工不存在' });
@@ -133,14 +133,29 @@ router.post('/', upload.single('avatar'), async (req, res) => {
       return res.status(500).json({ error: '数据库连接失败' });
     }
 
-    const result = await db.run(
-      'INSERT INTO staff (name, wechat_id, wechat_name, email, phone, avatar_url, department, position) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id',
-      [name, wechat_id, wechat_name, email, phone, avatar_url, department, position]
-    );
+    let result;
+    if (usePostgres) {
+      // PostgreSQL: 使用 $1, $2... 占位符和 RETURNING id
+      result = await db.run(
+        'INSERT INTO staff (name, wechat_id, wechat_name, email, phone, avatar_url, department, position) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id',
+        [name, wechat_id, wechat_name, email, phone, avatar_url, department, position]
+      );
+    } else {
+      // SQLite: 使用 ? 占位符，然后查询最后插入的ID
+      result = await db.run(
+        'INSERT INTO staff (name, wechat_id, wechat_name, email, phone, avatar_url, department, position) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+        [name, wechat_id, wechat_name, email, phone, avatar_url, department, position]
+      );
+    }
 
     console.log('✅ 插入结果:', result);
 
-    const newStaff = await db.get('SELECT * FROM staff WHERE id = $1', [result.id]);
+    let newStaff;
+    if (usePostgres) {
+      newStaff = await db.get('SELECT * FROM staff WHERE id = $1', [result.id]);
+    } else {
+      newStaff = await db.get('SELECT * FROM staff WHERE id = ?', [result.id]);
+    }
     console.log('📋 新员工信息:', newStaff);
     
     res.status(201).json(newStaff);
@@ -167,7 +182,12 @@ router.put('/:id', upload.single('avatar'), async (req, res) => {
     const staffId = req.params.id;
 
     // 获取当前员工信息
-    const currentStaff = await db.get('SELECT * FROM staff WHERE id = $1', [staffId]);
+    let currentStaff;
+    if (usePostgres) {
+      currentStaff = await db.get('SELECT * FROM staff WHERE id = $1', [staffId]);
+    } else {
+      currentStaff = await db.get('SELECT * FROM staff WHERE id = ?', [staffId]);
+    }
     if (!currentStaff) {
       return res.status(404).json({ error: '员工不存在' });
     }
@@ -185,12 +205,24 @@ router.put('/:id', upload.single('avatar'), async (req, res) => {
       avatar_url = `/uploads/avatars/${req.file.filename}`;
     }
 
-    await db.run(
-      'UPDATE staff SET name = $1, wechat_id = $2, wechat_name = $3, email = $4, phone = $5, avatar_url = $6, department = $7, position = $8, updated_at = CURRENT_TIMESTAMP WHERE id = $9',
-      [name, wechat_id, wechat_name, email, phone, avatar_url, department, position, staffId]
-    );
+    if (usePostgres) {
+      await db.run(
+        'UPDATE staff SET name = $1, wechat_id = $2, wechat_name = $3, email = $4, phone = $5, avatar_url = $6, department = $7, position = $8, updated_at = CURRENT_TIMESTAMP WHERE id = $9',
+        [name, wechat_id, wechat_name, email, phone, avatar_url, department, position, staffId]
+      );
+    } else {
+      await db.run(
+        'UPDATE staff SET name = ?, wechat_id = ?, wechat_name = ?, email = ?, phone = ?, avatar_url = ?, department = ?, position = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+        [name, wechat_id, wechat_name, email, phone, avatar_url, department, position, staffId]
+      );
+    }
 
-    const updatedStaff = await db.get('SELECT * FROM staff WHERE id = $1', [staffId]);
+    let updatedStaff;
+    if (usePostgres) {
+      updatedStaff = await db.get('SELECT * FROM staff WHERE id = $1', [staffId]);
+    } else {
+      updatedStaff = await db.get('SELECT * FROM staff WHERE id = ?', [staffId]);
+    }
     res.json(updatedStaff);
   } catch (error) {
     console.error('更新员工信息错误:', error);
@@ -212,7 +244,7 @@ router.delete('/:id', async (req, res) => {
       result = await db.run('UPDATE staff SET is_active = false WHERE id = $1', [req.params.id]);
     } else {
       // SQLite: is_active 是 INTEGER 类型
-      result = await db.run('UPDATE staff SET is_active = 0 WHERE id = $1', [req.params.id]);
+      result = await db.run('UPDATE staff SET is_active = 0 WHERE id = ?', [req.params.id]);
     }
     if (result.changes === 0) {
       return res.status(404).json({ error: '员工不存在' });
@@ -239,7 +271,7 @@ router.get('/search/:keyword', async (req, res) => {
     } else {
       // SQLite: is_active 是 INTEGER 类型
       staff = await db.query(
-        'SELECT * FROM staff WHERE is_active = 1 AND (name LIKE $1 OR wechat_name LIKE $2 OR department LIKE $3) ORDER BY name',
+        'SELECT * FROM staff WHERE is_active = 1 AND (name LIKE ? OR wechat_name LIKE ? OR department LIKE ?) ORDER BY name',
         [keyword, keyword, keyword]
       );
     }
