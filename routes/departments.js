@@ -12,23 +12,23 @@ router.get('/:department/projects', authenticateToken, async (req, res) => {
     const department = decodeURIComponent(req.params.department);
     const { status, priority } = req.query;
     
-    let sql = `SELECT * FROM "${department}" WHERE 1=1`;
-    const params = [];
-    let paramCount = 1;
+    let sql = `SELECT * FROM tasks WHERE description LIKE ?`;
+    const params = [`%"department":"${department}"%`];
+    let paramCount = 2;
     
     if (status) {
-      sql += ` AND 状态 = $${paramCount}`;
+      sql += ` AND status = $${paramCount}`;
       params.push(status);
       paramCount++;
     }
     
     if (priority) {
-      sql += ` AND 优先级 = $${paramCount}`;
+      sql += ` AND priority = $${paramCount}`;
       params.push(priority);
       paramCount++;
     }
     
-    sql += ' ORDER BY 创建时间 DESC';
+    sql += ' ORDER BY created_at DESC';
     
     const projects = await db.query(sql, params);
     res.json(projects);
@@ -46,7 +46,7 @@ router.get('/:department/projects/:id', authenticateToken, async (req, res) => {
     const department = decodeURIComponent(req.params.department);
     const projectId = req.params.id;
     
-    const project = await db.get(`SELECT * FROM "${department}" WHERE id = $1`, [projectId]);
+    const project = await db.get(`SELECT * FROM tasks WHERE id = $1 AND description LIKE $2`, [projectId, `%"department":"${department}"%`]);
     
     if (!project) {
       return res.status(404).json({ error: '项目不存在' });
@@ -65,17 +65,34 @@ router.post('/:department/projects', authenticateToken, async (req, res) => {
     const department = decodeURIComponent(req.params.department);
     const projectData = req.body;
     
+    // 将部门特有字段存储到 description 字段中（JSON格式）
+    const { 项目名称, 项目描述, 负责人, 优先级, 状态, 开始时间, 预计完成时间, ...departmentFields } = projectData;
+    
+    // 构建基础任务数据
+    const taskData = {
+      title: 项目名称 || '',
+      description: JSON.stringify({
+        original_description: 项目描述 || '',
+        department: department,
+        department_fields: departmentFields
+      }),
+      priority: 优先级 || 2,
+      status: 状态 || 1,
+      start_time: 开始时间 || null,
+      estimated_completion_time: 预计完成时间 || null
+    };
+    
     // 构建动态 SQL
-    const columns = Object.keys(projectData);
-    const values = Object.values(projectData);
+    const columns = Object.keys(taskData);
+    const values = Object.values(taskData);
     const placeholders = columns.map((_, index) => `$${index + 1}`).join(', ');
     
-    const sql = `INSERT INTO "${department}" (${columns.join(', ')}) VALUES (${placeholders}) RETURNING id`;
+    const sql = `INSERT INTO tasks (${columns.join(', ')}) VALUES (${placeholders})`;
     
     const result = await db.run(sql, values);
     
     // 获取创建的项目
-    const newProject = await db.get(`SELECT * FROM "${department}" WHERE id = $1`, [result.id]);
+    const newProject = await db.get(`SELECT * FROM tasks WHERE id = $1`, [result.id]);
     
     res.status(201).json(newProject);
   } catch (error) {
@@ -84,7 +101,7 @@ router.post('/:department/projects', authenticateToken, async (req, res) => {
   }
 });
 
-// 更新部门项目 - 调试版本
+// 更新部门项目 - 使用 tasks 表
 router.put('/:department/projects/:id', authenticateToken, async (req, res) => {
   try {
     console.log('=== 开始调试更新项目 ===');
@@ -100,12 +117,29 @@ router.put('/:department/projects/:id', authenticateToken, async (req, res) => {
     console.log('更新数据:', updateData);
     console.log('数据库类型:', usePostgres ? 'PostgreSQL' : 'SQLite');
     
+    // 将部门特有字段存储到 description 字段中（JSON格式）
+    const { 项目名称, 项目描述, 负责人, 优先级, 状态, 开始时间, 预计完成时间, ...departmentFields } = updateData;
+    
+    // 构建基础任务数据
+    const taskData = {
+      title: 项目名称 || '',
+      description: JSON.stringify({
+        original_description: 项目描述 || '',
+        department: department,
+        department_fields: departmentFields
+      }),
+      priority: 优先级 || 2,
+      status: 状态 || 1,
+      start_time: 开始时间 || null,
+      estimated_completion_time: 预计完成时间 || null
+    };
+    
     // 构建动态 SQL
-    const columns = Object.keys(updateData);
-    const values = Object.values(updateData);
+    const columns = Object.keys(taskData);
+    const values = Object.values(taskData);
     const setClause = columns.map((col, index) => `"${col}" = $${index + 1}`).join(', ');
     
-    const sql = `UPDATE "${department}" SET ${setClause} WHERE id = $${columns.length + 1}`;
+    const sql = `UPDATE tasks SET ${setClause} WHERE id = $${columns.length + 1}`;
     values.push(projectId);
     
     console.log('生成的SQL:', sql);
@@ -113,7 +147,7 @@ router.put('/:department/projects/:id', authenticateToken, async (req, res) => {
     
     // 先检查项目是否存在
     console.log('检查项目是否存在...');
-    const existingProject = await db.get(`SELECT * FROM "${department}" WHERE id = $1`, [projectId]);
+    const existingProject = await db.get(`SELECT * FROM tasks WHERE id = $1`, [projectId]);
     console.log('现有项目:', existingProject);
     
     if (!existingProject) {
@@ -132,7 +166,7 @@ router.put('/:department/projects/:id', authenticateToken, async (req, res) => {
     
     // 获取更新后的项目
     console.log('获取更新后的项目...');
-    const updatedProject = await db.get(`SELECT * FROM "${department}" WHERE id = $1`, [projectId]);
+    const updatedProject = await db.get(`SELECT * FROM tasks WHERE id = $1`, [projectId]);
     console.log('更新后的项目:', updatedProject);
     
     console.log('=== 更新成功 ===');
@@ -185,7 +219,7 @@ router.delete('/:department/projects/:id', authenticateToken, async (req, res) =
     const department = decodeURIComponent(req.params.department);
     const projectId = req.params.id;
     
-    const result = await db.run(`DELETE FROM "${department}" WHERE id = $1`, [projectId]);
+    const result = await db.run(`DELETE FROM tasks WHERE id = $1 AND description LIKE $2`, [projectId, `%"department":"${department}"%`]);
     
     if (result.changes === 0) {
       return res.status(404).json({ error: '项目不存在' });
@@ -206,16 +240,17 @@ router.get('/:department/stats', authenticateToken, async (req, res) => {
     const stats = await db.query(`
       SELECT 
         COUNT(*) as total_projects,
-        SUM(CASE WHEN 状态 = 1 THEN 1 ELSE 0 END) as pending_projects,
-        SUM(CASE WHEN 状态 = 2 THEN 1 ELSE 0 END) as in_progress_projects,
-        SUM(CASE WHEN 状态 = 3 THEN 1 ELSE 0 END) as completed_projects,
-        SUM(CASE WHEN 状态 = 4 THEN 1 ELSE 0 END) as cancelled_projects,
-        SUM(CASE WHEN 优先级 = 1 THEN 1 ELSE 0 END) as low_priority,
-        SUM(CASE WHEN 优先级 = 2 THEN 1 ELSE 0 END) as medium_priority,
-        SUM(CASE WHEN 优先级 = 3 THEN 1 ELSE 0 END) as high_priority,
-        SUM(CASE WHEN 优先级 = 4 THEN 1 ELSE 0 END) as urgent_priority
-      FROM "${department}"
-    `);
+        SUM(CASE WHEN status = 1 THEN 1 ELSE 0 END) as pending_projects,
+        SUM(CASE WHEN status = 2 THEN 1 ELSE 0 END) as in_progress_projects,
+        SUM(CASE WHEN status = 3 THEN 1 ELSE 0 END) as completed_projects,
+        SUM(CASE WHEN status = 4 THEN 1 ELSE 0 END) as cancelled_projects,
+        SUM(CASE WHEN priority = 1 THEN 1 ELSE 0 END) as low_priority,
+        SUM(CASE WHEN priority = 2 THEN 1 ELSE 0 END) as medium_priority,
+        SUM(CASE WHEN priority = 3 THEN 1 ELSE 0 END) as high_priority,
+        SUM(CASE WHEN priority = 4 THEN 1 ELSE 0 END) as urgent_priority
+      FROM tasks
+      WHERE description LIKE ?
+    `, [`%"department":"${department}"%`]);
     
     res.json(stats[0]);
   } catch (error) {
