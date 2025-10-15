@@ -14,18 +14,15 @@ router.get('/:department/projects', authenticateToken, async (req, res) => {
     
     let sql = `SELECT * FROM tasks WHERE description LIKE ?`;
     const params = [`%"department":"${department}"%`];
-    let paramCount = 2;
     
     if (status) {
-      sql += ` AND status = $${paramCount}`;
+      sql += ` AND status = ?`;
       params.push(status);
-      paramCount++;
     }
     
     if (priority) {
-      sql += ` AND priority = $${paramCount}`;
+      sql += ` AND priority = ?`;
       params.push(priority);
-      paramCount++;
     }
     
     sql += ' ORDER BY created_at DESC';
@@ -46,7 +43,7 @@ router.get('/:department/projects/:id', authenticateToken, async (req, res) => {
     const department = decodeURIComponent(req.params.department);
     const projectId = req.params.id;
     
-    const project = await db.get(`SELECT * FROM tasks WHERE id = $1 AND description LIKE $2`, [projectId, `%"department":"${department}"%`]);
+    const project = await db.get(`SELECT * FROM tasks WHERE id = ? AND description LIKE ?`, [projectId, `%"department":"${department}"%`]);
     
     if (!project) {
       return res.status(404).json({ error: '项目不存在' });
@@ -85,14 +82,14 @@ router.post('/:department/projects', authenticateToken, async (req, res) => {
     // 构建动态 SQL
     const columns = Object.keys(taskData);
     const values = Object.values(taskData);
-    const placeholders = columns.map((_, index) => `$${index + 1}`).join(', ');
+    const placeholders = columns.map(() => '?').join(', ');
     
     const sql = `INSERT INTO tasks (${columns.join(', ')}) VALUES (${placeholders})`;
     
     const result = await db.run(sql, values);
     
     // 获取创建的项目
-    const newProject = await db.get(`SELECT * FROM tasks WHERE id = $1`, [result.id]);
+    const newProject = await db.get(`SELECT * FROM tasks WHERE id = ?`, [result.id]);
     
     res.status(201).json(newProject);
   } catch (error) {
@@ -137,9 +134,9 @@ router.put('/:department/projects/:id', authenticateToken, async (req, res) => {
     // 构建动态 SQL
     const columns = Object.keys(taskData);
     const values = Object.values(taskData);
-    const setClause = columns.map((col, index) => `"${col}" = $${index + 1}`).join(', ');
+    const setClause = columns.map((col) => `"${col}" = ?`).join(', ');
     
-    const sql = `UPDATE tasks SET ${setClause} WHERE id = $${columns.length + 1}`;
+    const sql = `UPDATE tasks SET ${setClause} WHERE id = ?`;
     values.push(projectId);
     
     console.log('生成的SQL:', sql);
@@ -147,7 +144,7 @@ router.put('/:department/projects/:id', authenticateToken, async (req, res) => {
     
     // 先检查项目是否存在
     console.log('检查项目是否存在...');
-    const existingProject = await db.get(`SELECT * FROM tasks WHERE id = $1`, [projectId]);
+    const existingProject = await db.get(`SELECT * FROM tasks WHERE id = ?`, [projectId]);
     console.log('现有项目:', existingProject);
     
     if (!existingProject) {
@@ -166,7 +163,7 @@ router.put('/:department/projects/:id', authenticateToken, async (req, res) => {
     
     // 获取更新后的项目
     console.log('获取更新后的项目...');
-    const updatedProject = await db.get(`SELECT * FROM tasks WHERE id = $1`, [projectId]);
+    const updatedProject = await db.get(`SELECT * FROM tasks WHERE id = ?`, [projectId]);
     console.log('更新后的项目:', updatedProject);
     
     console.log('=== 更新成功 ===');
@@ -219,7 +216,7 @@ router.delete('/:department/projects/:id', authenticateToken, async (req, res) =
     const department = decodeURIComponent(req.params.department);
     const projectId = req.params.id;
     
-    const result = await db.run(`DELETE FROM tasks WHERE id = $1 AND description LIKE $2`, [projectId, `%"department":"${department}"%`]);
+    const result = await db.run(`DELETE FROM tasks WHERE id = ? AND description LIKE ?`, [projectId, `%"department":"${department}"%`]);
     
     if (result.changes === 0) {
       return res.status(404).json({ error: '项目不存在' });
