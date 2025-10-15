@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS "产业分析" (
   预计完成时间 TIMESTAMP WITH TIME ZONE,
   实际完成时间 TIMESTAMP WITH TIME ZONE,
   创建时间 TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  更新时间 TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
   创建者 INTEGER,
   
   -- 部门特有字段
@@ -38,6 +39,7 @@ CREATE TABLE IF NOT EXISTS "创意实践" (
   预计完成时间 TIMESTAMP WITH TIME ZONE,
   实际完成时间 TIMESTAMP WITH TIME ZONE,
   创建时间 TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  更新时间 TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
   创建者 INTEGER,
   
   -- 部门特有字段
@@ -63,6 +65,7 @@ CREATE TABLE IF NOT EXISTS "活动策划" (
   预计完成时间 TIMESTAMP WITH TIME ZONE,
   实际完成时间 TIMESTAMP WITH TIME ZONE,
   创建时间 TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  更新时间 TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
   创建者 INTEGER,
   
   -- 部门特有字段
@@ -90,6 +93,7 @@ CREATE TABLE IF NOT EXISTS "资源拓展" (
   预计完成时间 TIMESTAMP WITH TIME ZONE,
   实际完成时间 TIMESTAMP WITH TIME ZONE,
   创建时间 TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  更新时间 TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
   创建者 INTEGER,
   
   -- 部门特有字段
@@ -121,6 +125,28 @@ CREATE INDEX IF NOT EXISTS idx_活动策划_创建时间 ON "活动策划"(创�
 CREATE INDEX IF NOT EXISTS idx_资源拓展_状态 ON "资源拓展"(状态);
 CREATE INDEX IF NOT EXISTS idx_资源拓展_优先级 ON "资源拓展"(优先级);
 CREATE INDEX IF NOT EXISTS idx_资源拓展_创建时间 ON "资源拓展"(创建时间 DESC);
+
+-- 创建触发器函数用于自动更新更新时间字段
+CREATE OR REPLACE FUNCTION update_department_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW."更新时间" = CURRENT_TIMESTAMP;
+    RETURN NEW;
+END;
+$$ language 'plpgsql';
+
+-- 为每个部门表创建更新时间触发器
+CREATE TRIGGER update_产业分析_updated_at BEFORE UPDATE ON "产业分析"
+    FOR EACH ROW EXECUTE FUNCTION update_department_updated_at_column();
+
+CREATE TRIGGER update_创意实践_updated_at BEFORE UPDATE ON "创意实践"
+    FOR EACH ROW EXECUTE FUNCTION update_department_updated_at_column();
+
+CREATE TRIGGER update_活动策划_updated_at BEFORE UPDATE ON "活动策划"
+    FOR EACH ROW EXECUTE FUNCTION update_department_updated_at_column();
+
+CREATE TRIGGER update_资源拓展_updated_at BEFORE UPDATE ON "资源拓展"
+    FOR EACH ROW EXECUTE FUNCTION update_department_updated_at_column();
 
 -- 插入示例数据（可选）
 INSERT INTO "产业分析" (项目名称, 项目描述, 负责人, 优先级, 状态, 分析类型, 目标行业) VALUES

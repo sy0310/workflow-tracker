@@ -2,11 +2,19 @@
 
 ## 问题说明
 
-如果您遇到 "加载任务列表失败" 的错误，这是因为数据库中缺少四个部门的项目表。
+如果您遇到以下错误之一：
+- "加载任务列表失败" 的错误
+- "PUT /api/departments/{department}/projects/{id} 500 (Internal Server Error)" 错误
+
+这是因为数据库中缺少四个部门的项目表，或者部门表缺少必要的列。
 
 ## 解决方案
 
-### 方法 1：使用 Supabase Dashboard（推荐）
+### 情况 1：首次创建部门表
+
+如果您还没有创建部门表，请按照以下步骤操作：
+
+#### 方法 1：使用 Supabase Dashboard（推荐）
 
 1. **登录 Supabase**
    - 访问 [https://supabase.com/dashboard](https://supabase.com/dashboard)
@@ -30,7 +38,7 @@
      - 活动策划
      - 资源拓展
 
-### 方法 2：使用 PostgreSQL 客户端
+#### 方法 2：使用 PostgreSQL 客户端
 
 如果您使用的是本地 PostgreSQL 数据库：
 
@@ -38,6 +46,24 @@
 # 使用 psql 命令行工具
 psql -U your_username -d your_database -f scripts/create-department-tables.sql
 ```
+
+### 情况 2：已存在部门表但缺少 "更新时间" 列
+
+如果您已经创建了部门表，但遇到 "500 Internal Server Error" 错误，可能是因为缺少 "更新时间" 列。
+
+#### 解决步骤：
+
+1. **在 Supabase SQL Editor 中执行**：
+   - 复制 `scripts/add-updated-at-column.sql` 文件的全部内容
+   - 粘贴到 SQL Editor 中
+   - 点击 "Run" 执行
+
+2. **或使用命令行**：
+   ```bash
+   psql -U your_username -d your_database -f scripts/add-updated-at-column.sql
+   ```
+
+执行完成后，项目更新功能应该可以正常工作。
 
 ## 表结构说明
 
@@ -54,6 +80,7 @@ psql -U your_username -d your_database -f scripts/create-department-tables.sql
 - `预计完成时间` - 预计完成时间
 - `实际完成时间` - 实际完成时间
 - `创建时间` - 记录创建时间
+- `更新时间` - 记录最后更新时间
 - `创建者` - 创建者ID
 
 ### 产业分析部门特有字段

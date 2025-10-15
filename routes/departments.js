@@ -96,7 +96,7 @@ router.put('/:department/projects/:id', authenticateToken, async (req, res) => {
     const values = Object.values(updateData);
     const setClause = columns.map((col, index) => `"${col}" = $${index + 1}`).join(', ');
     
-    const sql = `UPDATE "${department}" SET ${setClause}, "更新时间" = CURRENT_TIMESTAMP WHERE id = $${columns.length + 1}`;
+    const sql = `UPDATE "${department}" SET ${setClause} WHERE id = $${columns.length + 1}`;
     values.push(projectId);
     
     const result = await db.run(sql, values);
