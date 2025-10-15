@@ -92,6 +92,14 @@ function setupDepartmentEvents() {
 
 // 显示不同部分
 function showSection(sectionName) {
+    // 检查认证状态
+    const auth = AuthManager.checkAuth();
+    if (!auth) {
+        console.log('用户未登录，重定向到登录页面');
+        window.location.href = '/login.html';
+        return;
+    }
+    
     // 隐藏所有部分
     document.querySelectorAll('.section').forEach(section => {
         section.style.display = 'none';
@@ -724,15 +732,41 @@ function displayTasks(tasks) {
 // 加载人员列表
 async function loadStaff() {
     try {
+        // 检查是否已登录
+        const auth = AuthManager.checkAuth();
+        if (!auth) {
+            console.log('用户未登录，重定向到登录页面');
+            window.location.href = '/login.html';
+            return;
+        }
+        
         const response = await fetch('/api/staff', {
             headers: AuthManager.getAuthHeaders()
         });
+        
+        console.log('Staff API response status:', response.status);
+        console.log('Staff API response headers:', response.headers);
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('API Error Response:', errorText);
+            throw new Error(`API请求失败: ${response.status} - ${errorText}`);
+        }
+        
         const staff = await response.json();
+        console.log('Staff data received:', staff);
+        console.log('Staff data type:', typeof staff);
+        console.log('Is staff an array?', Array.isArray(staff));
+        
+        if (!Array.isArray(staff)) {
+            console.error('Expected array but got:', typeof staff, staff);
+            throw new Error('API返回的数据格式不正确');
+        }
         
         displayStaff(staff);
     } catch (error) {
         console.error('加载人员列表失败:', error);
-        showAlert('加载人员列表失败', 'danger');
+        showAlert('加载人员列表失败: ' + error.message, 'danger');
     }
 }
 

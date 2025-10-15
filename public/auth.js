@@ -245,10 +245,15 @@ class AuthManager {
     // 静态方法：获取认证头
     static getAuthHeaders() {
         const token = localStorage.getItem('auth_token');
-        return {
-            'Authorization': `Bearer ${token}`,
+        const headers = {
             'Content-Type': 'application/json'
         };
+        
+        if (token && token !== 'null') {
+            headers['Authorization'] = `Bearer ${token}`;
+        }
+        
+        return headers;
     }
 }
 

@@ -37,12 +37,44 @@ const upload = multer({
 // 获取所有员工
 router.get('/', async (req, res) => {
   try {
+    console.log('📋 开始获取员工列表...');
+    console.log('🗄️ 数据库类型:', process.env.DATABASE_URL ? 'PostgreSQL' : 'SQLite');
+    
+    // 先测试数据库连接
+    try {
+      await db.query('SELECT 1');
+      console.log('✅ 数据库连接正常');
+    } catch (dbError) {
+      console.error('❌ 数据库连接失败:', dbError);
+      return res.status(500).json({ error: '数据库连接失败: ' + dbError.message });
+    }
+    
+    // 检查表是否存在
+    try {
+      const tableCheck = await db.query(`
+        SELECT name FROM sqlite_master 
+        WHERE type='table' AND name='staff'
+      `);
+      console.log('📊 表检查结果:', tableCheck);
+    } catch (tableError) {
+      console.log('⚠️ 无法检查表结构 (可能是PostgreSQL):', tableError.message);
+    }
+    
     // 兼容 SQLite 和 PostgreSQL 的布尔值查询
     const staff = await db.query('SELECT * FROM staff WHERE is_active = 1 OR is_active = true ORDER BY name');
+    console.log('👥 查询到的员工数量:', staff ? staff.length : 'null');
+    console.log('📋 员工数据:', staff);
+    
+    if (!Array.isArray(staff)) {
+      console.error('❌ 查询结果不是数组:', typeof staff, staff);
+      return res.status(500).json({ error: '数据库查询结果格式错误' });
+    }
+    
     res.json(staff);
   } catch (error) {
-    console.error('获取员工列表错误:', error);
-    res.status(500).json({ error: '获取员工列表失败' });
+    console.error('❌ 获取员工列表错误:', error);
+    console.error('❌ 错误堆栈:', error.stack);
+    res.status(500).json({ error: '获取员工列表失败: ' + error.message });
   }
 });
 
