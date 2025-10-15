@@ -129,16 +129,32 @@ function generateTwoColumnFieldsHTML(fields, values = {}, prefix = '') {
 
 // 从表单收集字段数据
 function collectFieldData(department, prefix = '') {
+    console.log(`=== collectFieldData 调试 ===`);
+    console.log('部门:', department);
+    console.log('前缀:', prefix);
+    
     const fields = DEPARTMENT_FIELDS[department];
-    if (!fields) return {};
+    console.log('找到的字段配置:', fields);
+    
+    if (!fields) {
+        console.warn('未找到部门字段配置');
+        return {};
+    }
     
     const data = {};
     fields.forEach(fieldConfig => {
         const fieldId = prefix + fieldConfig.id;
         const element = document.getElementById(fieldId);
+        console.log(`字段 ${fieldConfig.field}: ID=${fieldId}, 元素存在=${!!element}`);
         if (element) {
-            data[fieldConfig.field] = element.value || '';
+            const value = element.value || '';
+            console.log(`字段 ${fieldConfig.field} 的值:`, value);
+            data[fieldConfig.field] = value;
+        } else {
+            console.warn(`找不到元素: ${fieldId}`);
         }
     });
+    
+    console.log('收集到的部门字段数据:', data);
     return data;
 }

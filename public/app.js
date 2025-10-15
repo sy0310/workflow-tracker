@@ -458,15 +458,66 @@ async function updateProject() {
             预计完成时间: document.getElementById('edit-project-end-time').value
         };
         
+        // 数据验证
+        console.log('=== 数据验证 ===');
+        console.log('项目名称:', projectData.项目名称, '类型:', typeof projectData.项目名称);
+        console.log('负责人:', projectData.负责人, '类型:', typeof projectData.负责人);
+        console.log('优先级:', projectData.优先级, '类型:', typeof projectData.优先级, '是否NaN:', isNaN(projectData.优先级));
+        console.log('状态:', projectData.状态, '类型:', typeof projectData.状态, '是否NaN:', isNaN(projectData.状态));
+        console.log('开始时间:', projectData.开始时间, '类型:', typeof projectData.开始时间);
+        console.log('预计完成时间:', projectData.预计完成时间, '类型:', typeof projectData.预计完成时间);
+        
+        // 清理无效数据
+        if (isNaN(projectData.优先级)) {
+            console.warn('优先级无效，使用默认值 2');
+            projectData.优先级 = 2;
+        }
+        if (isNaN(projectData.状态)) {
+            console.warn('状态无效，使用默认值 1');
+            projectData.状态 = 1;
+        }
+        
+        // 过滤空字符串
+        Object.keys(projectData).forEach(key => {
+            if (projectData[key] === '' || projectData[key] === null) {
+                delete projectData[key];
+                console.log(`移除空字段: ${key}`);
+            }
+        });
+        
         // 添加部门特有字段（使用配置文件）
         const departmentFields = collectFieldData(department, 'edit-');
         Object.assign(projectData, departmentFields);
         
-        const response = await fetch(`/api/departments/${encodeURIComponent(department)}/projects/${projectId}`, {
+        // 调试信息
+        console.log('=== 前端调试信息 ===');
+        console.log('项目ID:', projectId);
+        console.log('部门:', department);
+        console.log('编码后的部门:', encodeURIComponent(department));
+        console.log('基础项目数据:', {
+            项目名称: projectData.项目名称,
+            项目描述: projectData.项目描述,
+            负责人: projectData.负责人,
+            优先级: projectData.优先级,
+            状态: projectData.状态,
+            开始时间: projectData.开始时间,
+            预计完成时间: projectData.预计完成时间
+        });
+        console.log('部门特有字段:', departmentFields);
+        console.log('完整项目数据:', projectData);
+        console.log('请求头:', AuthManager.getAuthHeaders());
+        
+        const url = `/api/departments/${encodeURIComponent(department)}/projects/${projectId}`;
+        console.log('请求URL:', url);
+        
+        const response = await fetch(url, {
             method: 'PUT',
             headers: AuthManager.getAuthHeaders(),
             body: JSON.stringify(projectData)
         });
+        
+        console.log('响应状态:', response.status);
+        console.log('响应头:', response.headers);
         
         if (response.ok) {
             showAlert('项目更新成功', 'success');
@@ -482,12 +533,23 @@ async function updateProject() {
                 ]);
             }
         } else {
-            const error = await response.json();
+            console.error('响应不成功，状态码:', response.status);
+            let error;
+            try {
+                error = await response.json();
+                console.error('错误响应内容:', error);
+            } catch (e) {
+                console.error('无法解析错误响应:', e);
+                const errorText = await response.text();
+                console.error('错误响应文本:', errorText);
+                error = { error: '服务器响应格式错误', details: errorText };
+            }
             showAlert(error.error || '更新项目失败', 'danger');
+            console.error('完整错误信息:', error);
         }
     } catch (error) {
-        console.error('更新项目失败:', error);
-        showAlert('更新项目失败', 'danger');
+        console.error('更新项目失败 - 网络或其他错误:', error);
+        showAlert('更新项目失败: ' + error.message, 'danger');
     }
 }
 
