@@ -60,8 +60,15 @@ router.get('/', async (req, res) => {
       console.log('⚠️ 无法检查表结构 (可能是PostgreSQL):', tableError.message);
     }
     
-    // 兼容 SQLite 和 PostgreSQL 的布尔值查询
-    const staff = await db.query('SELECT * FROM staff WHERE is_active = 1 OR is_active = true ORDER BY name');
+    // 根据数据库类型选择合适的查询方式
+    let staff;
+    if (usePostgres) {
+      // PostgreSQL: is_active 是 BOOLEAN 类型
+      staff = await db.query('SELECT * FROM staff WHERE is_active = true ORDER BY name');
+    } else {
+      // SQLite: is_active 是 INTEGER 类型
+      staff = await db.query('SELECT * FROM staff WHERE is_active = 1 ORDER BY name');
+    }
     console.log('👥 查询到的员工数量:', staff ? staff.length : 'null');
     console.log('📋 员工数据:', staff);
     
@@ -81,8 +88,15 @@ router.get('/', async (req, res) => {
 // 获取单个员工信息
 router.get('/:id', async (req, res) => {
   try {
-    // 兼容 SQLite 和 PostgreSQL 的布尔值查询
-    const staff = await db.get('SELECT * FROM staff WHERE id = $1 AND (is_active = 1 OR is_active = true)', [req.params.id]);
+    // 根据数据库类型选择合适的查询方式
+    let staff;
+    if (usePostgres) {
+      // PostgreSQL: is_active 是 BOOLEAN 类型
+      staff = await db.get('SELECT * FROM staff WHERE id = $1 AND is_active = true', [req.params.id]);
+    } else {
+      // SQLite: is_active 是 INTEGER 类型
+      staff = await db.get('SELECT * FROM staff WHERE id = $1 AND is_active = 1', [req.params.id]);
+    }
     if (!staff) {
       return res.status(404).json({ error: '员工不存在' });
     }
@@ -191,8 +205,15 @@ router.put('/:id', upload.single('avatar'), async (req, res) => {
 // 删除员工（软删除）
 router.delete('/:id', async (req, res) => {
   try {
-    // 兼容 SQLite 和 PostgreSQL 的布尔值更新
-    const result = await db.run('UPDATE staff SET is_active = 0 WHERE id = $1', [req.params.id]);
+    // 根据数据库类型选择合适的更新方式
+    let result;
+    if (usePostgres) {
+      // PostgreSQL: is_active 是 BOOLEAN 类型
+      result = await db.run('UPDATE staff SET is_active = false WHERE id = $1', [req.params.id]);
+    } else {
+      // SQLite: is_active 是 INTEGER 类型
+      result = await db.run('UPDATE staff SET is_active = 0 WHERE id = $1', [req.params.id]);
+    }
     if (result.changes === 0) {
       return res.status(404).json({ error: '员工不存在' });
     }
@@ -207,11 +228,21 @@ router.delete('/:id', async (req, res) => {
 router.get('/search/:keyword', async (req, res) => {
   try {
     const keyword = `%${req.params.keyword}%`;
-    // 兼容 SQLite 和 PostgreSQL 的布尔值查询
-    const staff = await db.query(
-      'SELECT * FROM staff WHERE (is_active = 1 OR is_active = true) AND (name LIKE $1 OR wechat_name LIKE $2 OR department LIKE $3) ORDER BY name',
-      [keyword, keyword, keyword]
-    );
+    // 根据数据库类型选择合适的查询方式
+    let staff;
+    if (usePostgres) {
+      // PostgreSQL: is_active 是 BOOLEAN 类型
+      staff = await db.query(
+        'SELECT * FROM staff WHERE is_active = true AND (name LIKE $1 OR wechat_name LIKE $2 OR department LIKE $3) ORDER BY name',
+        [keyword, keyword, keyword]
+      );
+    } else {
+      // SQLite: is_active 是 INTEGER 类型
+      staff = await db.query(
+        'SELECT * FROM staff WHERE is_active = 1 AND (name LIKE $1 OR wechat_name LIKE $2 OR department LIKE $3) ORDER BY name',
+        [keyword, keyword, keyword]
+      );
+    }
     res.json(staff);
   } catch (error) {
     console.error('搜索员工错误:', error);
