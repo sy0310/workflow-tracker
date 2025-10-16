@@ -12,27 +12,54 @@ router.get('/:department/projects', authenticateToken, async (req, res) => {
     const department = decodeURIComponent(req.params.department);
     const { status, priority } = req.query;
     
-    let sql = `SELECT * FROM tasks WHERE description LIKE ?`;
-    const params = [`%"department":"${department}"%`];
+    // 根据数据库类型构建SQL查询
+    let sql, params;
     
-    if (status) {
-      sql += ` AND status = ?`;
-      params.push(status);
-    }
-    
-    if (priority) {
-      sql += ` AND priority = ?`;
-      params.push(priority);
+    if (usePostgres) {
+      // PostgreSQL 使用 $1, $2, $3... 占位符
+      sql = `SELECT * FROM tasks WHERE description LIKE $1`;
+      params = [`%"department":"${department}"%`];
+      
+      let paramCount = 2;
+      if (status) {
+        sql += ` AND status = $${paramCount}`;
+        params.push(status);
+        paramCount++;
+      }
+      
+      if (priority) {
+        sql += ` AND priority = $${paramCount}`;
+        params.push(priority);
+        paramCount++;
+      }
+    } else {
+      // SQLite 使用 ? 占位符
+      sql = `SELECT * FROM tasks WHERE description LIKE ?`;
+      params = [`%"department":"${department}"%`];
+      
+      if (status) {
+        sql += ` AND status = ?`;
+        params.push(status);
+      }
+      
+      if (priority) {
+        sql += ` AND priority = ?`;
+        params.push(priority);
+      }
     }
     
     sql += ' ORDER BY created_at DESC';
     
     const projects = await db.query(sql, params);
+    
+    if (!Array.isArray(projects)) {
+      console.error('数据库查询结果格式错误:', typeof projects, projects);
+      return res.status(500).json({ error: '数据库查询结果格式错误' });
+    }
+    
     res.json(projects);
   } catch (error) {
     console.error('获取部门项目列表错误:', error);
-    console.error('错误详情:', error.message);
-    console.error('错误堆栈:', error.stack);
     res.status(500).json({ error: '获取项目列表失败', details: error.message });
   }
 });
