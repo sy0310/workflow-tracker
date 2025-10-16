@@ -10,12 +10,28 @@ const supabase = require('./config/supabase');
  */
 async function query(tableName, options = {}) {
     try {
-        const { data, error } = await supabase
+        let query = supabase
             .from(tableName)
-            .select(options.select || '*')
-            .eq(options.where || {})
-            .order(options.order || 'id')
-            .limit(options.limit || 1000);
+            .select(options.select || '*');
+        
+        // 添加where条件
+        if (options.where) {
+            Object.keys(options.where).forEach(key => {
+                query = query.eq(key, options.where[key]);
+            });
+        }
+        
+        // 添加排序
+        if (options.order) {
+            query = query.order(options.order, { ascending: true });
+        }
+        
+        // 添加限制
+        if (options.limit) {
+            query = query.limit(options.limit);
+        }
+        
+        const { data, error } = await query;
         
         if (error) {
             throw error;
