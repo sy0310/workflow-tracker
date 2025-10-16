@@ -110,6 +110,12 @@ async function update(tableName, data, where) {
             throw error;
         }
         
+        // 检查是否有更新结果
+        if (!result || result.length === 0) {
+            console.log('⚠️ 更新操作没有影响任何记录');
+            return null;
+        }
+        
         return result[0];
     } catch (error) {
         console.error('❌ Supabase更新错误:', error);

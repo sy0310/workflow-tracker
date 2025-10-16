@@ -170,7 +170,11 @@ router.put('/:department/projects/:id', authenticateToken, async (req, res) => {
     try {
       // 尝试更新部门专用表
       updatedProject = await db.update(department, updateData, { id: projectId });
-      console.log(`成功更新${department}表项目:`, updatedProject.id);
+      if (updatedProject) {
+        console.log(`成功更新${department}表项目:`, updatedProject.id);
+      } else {
+        console.log(`部门表${department}中未找到项目ID: ${projectId}`);
+      }
     } catch (error) {
       console.log(`部门表${department}不存在，更新tasks表:`, error.message);
       
@@ -191,11 +195,15 @@ router.put('/:department/projects/:id', authenticateToken, async (req, res) => {
       };
       
       updatedProject = await db.update('tasks', taskData, { id: projectId });
-      console.log('在tasks表更新项目成功:', updatedProject.id);
+      if (updatedProject) {
+        console.log('在tasks表更新项目成功:', updatedProject.id);
+      } else {
+        console.log(`tasks表中未找到项目ID: ${projectId}`);
+      }
     }
     
     if (!updatedProject) {
-      return res.status(404).json({ error: '项目不存在' });
+      return res.status(404).json({ error: '项目不存在或更新失败' });
     }
     
     res.json(updatedProject);
