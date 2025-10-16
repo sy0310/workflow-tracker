@@ -13,6 +13,7 @@
   ],
   "env": {
     "NODE_ENV": "production",
-    "VERCEL": "1"
+    "VERCEL": "1",
+    "CORS_ORIGINS": "https://workflow-tracker.vercel.app,http://localhost:3000"
   }
 }
