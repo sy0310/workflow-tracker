@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const authenticateToken = require('../middleware/authenticateToken');
 // 根据环境变量选择数据库
 const usePostgres = process.env.DATABASE_URL;
 const db = usePostgres ? require('../database-postgres') : require('../database');
@@ -18,6 +19,37 @@ router.post('/register', async (req, res) => {
 
     if (password.length < 6) {
       return res.status(400).json({ error: '密码长度至少6位' });
+    }
+
+    // 首先检查表是否存在，如果不存在则创建
+    try {
+      await db.query('SELECT 1 FROM users LIMIT 1');
+    } catch (error) {
+      console.error('Users table does not exist, creating...', error.message);
+      // 如果表不存在，创建基本的用户表
+      await db.query(`
+        CREATE TABLE IF NOT EXISTS users (
+          id SERIAL PRIMARY KEY,
+          username VARCHAR(50) UNIQUE NOT NULL,
+          email VARCHAR(100) UNIQUE NOT NULL,
+          password_hash TEXT NOT NULL,
+          role VARCHAR(20) DEFAULT 'user',
+          is_active BOOLEAN DEFAULT true,
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+        )
+      `);
+      
+      // 创建默认管理员用户
+      const bcrypt = require('bcryptjs');
+      const adminPassword = await bcrypt.hash('admin123', 10);
+      await db.query(`
+        INSERT INTO users (username, email, password_hash, role, is_active) 
+        VALUES ($1, $2, $3, $4, $5) 
+        ON CONFLICT (username) DO NOTHING
+      `, ['admin', 'admin@example.com', adminPassword, 'admin', true]);
+      
+      console.log('Database tables created and admin user initialized');
     }
 
     // 检查用户是否已存在
@@ -59,17 +91,59 @@ router.post('/register', async (req, res) => {
 // 登录
 router.post('/login', async (req, res) => {
   try {
+    console.log('Login attempt:', { username: req.body.username, hasPassword: !!req.body.password });
+    
     const { username, password } = req.body;
 
     if (!username || !password) {
       return res.status(400).json({ error: '用户名和密码都是必填项' });
     }
 
+    // 检查数据库连接
+    if (!db) {
+      console.error('Database connection not available');
+      return res.status(500).json({ error: '数据库连接不可用' });
+    }
+
+    console.log('Attempting to query database...');
+    
+    // 首先检查表是否存在，如果不存在则创建
+    try {
+      await db.query('SELECT 1 FROM users LIMIT 1');
+    } catch (error) {
+      console.error('Users table does not exist, creating...', error.message);
+      // 如果表不存在，创建基本的用户表
+      await db.query(`
+        CREATE TABLE IF NOT EXISTS users (
+          id SERIAL PRIMARY KEY,
+          username VARCHAR(50) UNIQUE NOT NULL,
+          email VARCHAR(100) UNIQUE NOT NULL,
+          password_hash TEXT NOT NULL,
+          role VARCHAR(20) DEFAULT 'user',
+          is_active BOOLEAN DEFAULT true,
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+        )
+      `);
+      
+      // 创建默认管理员用户
+      const bcrypt = require('bcryptjs');
+      const adminPassword = await bcrypt.hash('admin123', 10);
+      await db.query(`
+        INSERT INTO users (username, email, password_hash, role, is_active) 
+        VALUES ($1, $2, $3, $4, $5) 
+        ON CONFLICT (username) DO NOTHING
+      `, ['admin', 'admin@example.com', adminPassword, 'admin', true]);
+      
+      console.log('Database tables created and admin user initialized');
+    }
+    
     // 查找用户
     const user = await db.get(
       'SELECT * FROM users WHERE (username = $1 OR email = $2) AND is_active = true',
       [username, username]
     );
+    console.log('User found:', !!user);
 
     if (!user) {
       return res.status(401).json({ error: '用户名或密码错误' });
@@ -272,23 +346,6 @@ router.delete('/users/:id', authenticateToken, requireAdmin, async (req, res) =>
   }
 });
 
-// JWT认证中间件
-function authenticateToken(req, res, next) {
-  const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1];
-
-  if (!token) {
-    return res.status(401).json({ error: '访问令牌缺失' });
-  }
-
-  jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key', (err, user) => {
-    if (err) {
-      return res.status(403).json({ error: '访问令牌无效' });
-    }
-    req.user = user;
-    next();
-  });
-}
 
 // 管理员权限中间件
 function requireAdmin(req, res, next) {
